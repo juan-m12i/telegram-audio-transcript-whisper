@@ -1,0 +1,57 @@
+import os
+import openai
+
+class OpenAI:
+
+    def __init__(self, api_key=os.getenv("OPEN_AI_API_KEY")):
+        # Set up OpenAI API key
+        openai.api_key = api_key
+        self.messages = None
+
+    # Function to send a message to the OpenAI chatbot model and return its response
+    def send_message(self, message_log):
+        # Use OpenAI's ChatCompletion API to get the chatbot's response
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # The name of the OpenAI chatbot model to use
+            messages=message_log,   # The conversation history up to this point, as a list of dictionaries
+            # max_tokens=4096,        # The maximum number of tokens (words or subwords) in the generated response
+            stop=None,              # The stopping sequence for the generated response, if any (not used here)
+            temperature=0.7,        # The "creativity" of the generated response (higher temperature = more creative)
+        )
+
+        # Find the first response from the chatbot that has text in it (some responses may not have text)
+        for choice in response.choices:
+            if "text" in choice:
+                return choice.text
+
+        # If no response with text is found, return the first response's content (which may be empty)
+        return response.choices[0].message.content
+
+    def process_message(self, message):
+        # Set a flag to keep track of whether this is the first request in the conversation
+        if message.lower() == "quit":
+            self.messages = None
+            return
+        if message[:6] == "/clean":
+            self.messages = None
+            message = message[6:]
+        if self.messages is None:
+            self.messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": message},
+            ]
+        else:
+            self.messages.append(
+                {"role": "user", "content": message},
+            )
+
+        response = self.send_message(self.messages)
+        self.messages.append({"role": "assistant", "content": response})
+
+    def answer_message(self, message):
+        self.process_message(message)
+        return f"{len(self.messages)}: {self.messages[-1]}"
+
+
+if __name__ == '__main__':
+    my_openai = OpenAI()
