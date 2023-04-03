@@ -8,9 +8,12 @@ ARCH=$(uname -m)
 if [[ "$ARCH" == "arm"* ]]; then
   echo "Detected ARM architecture"
   DOCKERFILE=Dockerfile_arm
-else
+elif [[ "$ARCH" == "x86_64" ]]; then
   echo "Detected x64 architecture"
   DOCKERFILE=Dockerfile
+else
+  echo "Unknown architecture: $ARCH"
+  exit 1
 fi
 
 # Remove the container if it already exists
