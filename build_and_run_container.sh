@@ -4,17 +4,17 @@ CONTAINER_NAME="cont-telegram-whisper-bot"
 IMAGE_NAME="img-telegram-whisper-bot"
 
 # Detect platform architecture
-ARCH=$(uname -m)
-if [[ "$ARCH" == "arm"* ]]; then
+if uname -m | grep -qi 'arm'; then
   echo "Detected ARM architecture"
   DOCKERFILE=Dockerfile_arm
-elif [[ "$ARCH" == "x86_64" ]]; then
+elif uname -m | grep -qi 'x86_64'; then
   echo "Detected x64 architecture"
   DOCKERFILE=Dockerfile
 else
   echo "Unknown architecture: $ARCH"
   exit 1
 fi
+
 
 # Remove the container if it already exists
 if docker ps -a --format '{{.Names}}' | grep -q "^$CONTAINER_NAME$"; then
