@@ -24,5 +24,7 @@ fi
 
 # Build the Docker image with selected Dockerfile
 docker build -t $IMAGE_NAME -f $DOCKERFILE .
+echo "docker build -t $IMAGE_NAME -f $DOCKERFILE ."
 
 docker run -d --name $CONTAINER_NAME --env-file .env $IMAGE_NAME
+echo "docker run -d --name $CONTAINER_NAME --env-file .env $IMAGE_NAME"
