@@ -62,10 +62,18 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         response_text = response.json()["text"]
 
-        # Send the response text back to the user
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=response_text)
+        # Split the response into chunks of 4096 characters
+        response_chunks = [response_text[i:i + 4096] for i in range(0, len(response_text), 4096)]
+
+        # Send each chunk as a separate message
+        for chunk in response_chunks:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=chunk)
+
         # Your logic to process the response and caption text goes here
-        os.remove(local_file_path)  # Remove the temporary audio file
+        os.remove(local_file_path)
+
+
+# Remove the temporary audio file
 
 
 if __name__ == '__main__':
