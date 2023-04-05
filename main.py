@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from typing import List
 from dotenv import load_dotenv
 from telegram import Update
@@ -62,23 +63,27 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         response_text = response.json()["text"]
 
-        # Split the response text into smaller chunks
-        response_chunks = []
-        max_length = 1000
-        for sentence in response_text.split('.'):
-            sentence += '.'
-            while len(sentence) > max_length:
-                last_space = sentence[:max_length].rfind(' ')
-                response_chunks.append(sentence[:last_space])
-                sentence = sentence[last_space + 1:]
-            response_chunks.append(sentence)
+        # Split the response text into sentences using a regular expression
+        sentences = re.split("(?<=[.!?]) +", response_text)
 
-        # Send each chunk as a separate message
-        for chunk in response_chunks:
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=chunk)
+        # Combine the sentences into messages of no more than 1000 characters each
+        messages = []
+        current_message = ""
+        for sentence in sentences:
+            if len(current_message) + len(sentence) <= 1000:
+                current_message += sentence
+            else:
+                messages.append(current_message)
+                current_message = sentence
+        if current_message:
+            messages.append(current_message)
+
+        # Send each message as a separate message
+        for message in messages:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
         # Your logic to process the response and caption text goes here
-        os.remove(local_file_path)
+        # os.remove(local_file_path)
 
 
 # Remove the temporary audio file
