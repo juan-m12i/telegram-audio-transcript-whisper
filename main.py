@@ -62,8 +62,16 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         response_text = response.json()["text"]
 
-        # Split the response into chunks of 4096 characters
-        response_chunks = [response_text[i:i + 4096] for i in range(0, len(response_text), 4096)]
+        # Split the response text into smaller chunks
+        response_chunks = []
+        max_length = 1000
+        for sentence in response_text.split('.'):
+            sentence += '.'
+            while len(sentence) > max_length:
+                last_space = sentence[:max_length].rfind(' ')
+                response_chunks.append(sentence[:last_space])
+                sentence = sentence[last_space + 1:]
+            response_chunks.append(sentence)
 
         # Send each chunk as a separate message
         for chunk in response_chunks:
