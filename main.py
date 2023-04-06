@@ -75,6 +75,9 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 messages.append(current_message)
                 current_message = sentence
+        if len(current_message) > 1000:
+            messages.append(current_message)
+            current_message = ""
         messages.append(current_message + sentences[-1])
 
         # Send each message as a separate message
