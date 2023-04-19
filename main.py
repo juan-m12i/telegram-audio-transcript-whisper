@@ -79,14 +79,16 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Combine the sentences into messages of no more than 1000 characters each
         messages = []
         current_message = ""
-        for sentence in sentences:
+        for sentence in sentences[:-1]:
             if len(current_message) + len(sentence) <= 1000:
                 current_message += sentence
             else:
                 messages.append(current_message)
                 current_message = sentence
-        if current_message:
+        if len(current_message) > 1000:
             messages.append(current_message)
+            current_message = ""
+        messages.append(current_message + sentences[-1])
 
         # Send each message as a separate message
         for message in messages:
