@@ -56,7 +56,7 @@ class OpenAI:
 
     def answer_message(self, message, model: Optional[str] = None) -> str:
         self.process_message(message, model=model)
-        return f"{self.messages[-1].get('content')} - message #{len(self.messages)}"
+        return f"{self.messages[-1].get('content')} \n message #{len(self.messages)}"
 
 
 if __name__ == '__main__':
