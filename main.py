@@ -36,10 +36,10 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         received_message_text = update.message.text
         if received_message_text == 'ping':
             await context.bot.send_message(chat_id=update.effective_chat.id, text="pong")
-        elif received_message_text[:4] == "gpt4":
+        elif received_message_text[:4].lower() == "gpt4":
             response = my_open_ai.answer_message(received_message_text[4:], model="gpt-4")
             await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
-        elif received_message_text[:3] == "gpt":
+        elif received_message_text[:3].lower() == "gpt":
             response = my_open_ai.answer_message(received_message_text[4:])
             await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
         else:
