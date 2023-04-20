@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 
 import openai
 
@@ -9,7 +9,7 @@ class OpenAI:
     def __init__(self, api_key=os.getenv("OPEN_AI_API_KEY"), model: Optional[str] = None):
         # Set up OpenAI API key
         openai.api_key = api_key
-        self.messages = None
+        self.messages: Optional[List[dict]] = None
         self.model = model or "gpt-3.5-turbo"
 
     # Function to send a message to the OpenAI chatbot model and return its response
@@ -56,7 +56,7 @@ class OpenAI:
 
     def answer_message(self, message, model: Optional[str] = None) -> str:
         self.process_message(message, model=model)
-        return f"{len(self.messages)}: {self.messages[-1]}"
+        return f"{self.messages[-1].get('content')} - message #{len(self.messages)}"
 
 
 if __name__ == '__main__':
