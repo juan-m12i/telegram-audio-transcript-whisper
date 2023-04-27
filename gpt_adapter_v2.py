@@ -3,6 +3,7 @@ from typing import Optional, List
 
 import openai
 
+# TODO this is an attempt to make the adapter more idiomatic, it's not being used
 
 class Message:
     def __init__(self, role: str, content: str):
