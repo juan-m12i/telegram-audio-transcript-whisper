@@ -17,7 +17,8 @@ logging.basicConfig(
 )
 
 my_open_ai = OpenAI()  # OpenAI is a custom class that works as a wrapper/adapter for OpenAI's GPT API
-allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]  # Pythonic way of creating a list, behaves like a loop
+allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(
+    ',')]  # Pythonic way of creating a list, behaves like a loop
 
 
 # extracted method to only allow verified users
@@ -59,11 +60,18 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive(local_file_path)  #
 
         # Send the audio file to the OpenAI API endpoint
-        messages = transcribe_audio_file(local_file_path)
+        messages: List[str] = transcribe_audio_file(local_file_path)
 
         # Send each message as a separate message
         for message in messages:
             await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+
+        single_message: str = " ".join(messages)
+        response: str = my_open_ai.answer_message(
+            f'Please summarise the following message, keep the original language (if the text is in Spanish, perform the summary in Spanish), '
+            f'which will likely be spanish or english:"{single_message}" \n Your '
+            f'answer should start with "SUMMARY:\n" (in the original language, so it would be "RESUMEN: for Spanish')
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{response}")
 
         # Your logic to process the response and caption text goes here
         # os.remove(local_file_path)

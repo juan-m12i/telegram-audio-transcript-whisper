@@ -2,7 +2,9 @@ import os
 from typing import Optional, List
 
 import openai
+from dotenv import load_dotenv
 
+load_dotenv()
 
 # TODO refactor the methods of this class into something more idiomatic, it should be cleaner
 class OpenAI:
