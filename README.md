@@ -27,7 +27,7 @@ ALLOWED_CHAT_IDS=<comma_separated_list_of_allowed_chat_ids>
 3. Run the script:
 
 ```bash
-python main.py
+python gpt_whisper_bot.py
 ```
 
 ## Usage
