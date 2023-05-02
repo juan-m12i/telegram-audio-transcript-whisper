@@ -28,7 +28,7 @@ def allowed_user(update: Update) -> bool:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
-        await update.message.reply_text("Welcome, I'd love to help")
+        await update.message.reply_text("Welcome, I'd love to help with questions to GPT or audio transcriptions")
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
