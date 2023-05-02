@@ -4,9 +4,9 @@ from typing import List
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
-from gpt_adapter import OpenAI
+from adapters.gpt_adapter import OpenAI
 
-from whisper_adapter import transcribe_audio_file
+from adapters.whisper_adapter import transcribe_audio_file
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
