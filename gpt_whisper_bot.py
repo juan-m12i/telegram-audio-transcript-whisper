@@ -5,30 +5,12 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 from adapters.gpt_adapter import OpenAI
-
 from adapters.whisper_adapter import transcribe_audio_file
+from common_bot import allowed_user, build_bot, add_handlers, bot_start
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
-# Configure logging (native python library)
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
 my_open_ai = OpenAI()  # OpenAI is a custom class that works as a wrapper/adapter for OpenAI's GPT API
-allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(
-    ',')]  # Pythonic way of creating a list, behaves like a loop
-
-
-# extracted method to only allow verified users
-def allowed_user(update: Update) -> bool:
-    return update.effective_chat.id in allowed_chat_ids
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if allowed_user(update):
-        await update.message.reply_text("Welcome, I'd love to help with questions to GPT or audio transcriptions")
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -86,7 +68,8 @@ if __name__ == '__main__':
 
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
-    start_handler = CommandHandler('start', start)
+    start_command = bot_start("Welcome, I'd love to help with questions to GPT or audio transcriptions")
+    start_handler = CommandHandler('start', start_command)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     audio_handler = MessageHandler(filters.AUDIO, process_audio)
 
