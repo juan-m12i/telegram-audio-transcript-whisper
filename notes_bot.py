@@ -59,7 +59,6 @@ if __name__ == '__main__':
 
     bot.add_handler(start_handler)
     bot.add_handler(echo_handler)
-    bot.add_handler(audio_handler)
 
     # The app will be running constantly checking for new events
     bot.run_polling()
