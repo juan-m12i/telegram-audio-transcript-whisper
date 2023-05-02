@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from common_bot import allowed_user, build_bot, add_handlers
+from common_bot import allowed_user, build_bot, add_handlers, bot_start
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -14,16 +14,8 @@ allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CH
     ',')]  # Pythonic way of creating a list, behaves like a loop
 
 
-# extracted method to only allow verified users
-def allowed_user(update: Update) -> bool:
-    return update.effective_chat.id in allowed_chat_ids
-
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 NOTION_PAGE_ID = "20fe25981f634cea8d90098dddb543a0"
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if allowed_user(update):
-        await update.message.reply_text("Welcome, I'd love to help with your notes")
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -55,7 +47,8 @@ if __name__ == '__main__':
 
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
-    start_handler = CommandHandler('start', start)
+    start_command = bot_start("Welcome, I'd love to help with your notes")
+    start_handler = CommandHandler('start', start_command)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
 
     bot.add_handler(start_handler)
