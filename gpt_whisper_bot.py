@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 from adapters.gpt_adapter import OpenAI
 from adapters.whisper_adapter import transcribe_audio_file
-from common_bot import allowed_user, build_bot, add_handlers, bot_start
+from common_bot import allowed_user, build_bot, bot_start, run_telegram_bot
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -55,16 +55,9 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f'answer should start with "SUMMARY:\n" (in the original language, so it would be "RESUMEN: for Spanish')
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{response}")
 
-        # Your logic to process the response and caption text goes here
-        # os.remove(local_file_path)
+        os.remove(local_file_path)
 
-
-# Remove the temporary audio file
-
-
-if __name__ == '__main__':
-    # This comes directly from the telegram bot library
-    bot = ApplicationBuilder().token(os.getenv('TELEGRAM_BOT_TOKEN')).build()
+def run_whisper_bot():
 
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
@@ -73,9 +66,8 @@ if __name__ == '__main__':
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     audio_handler = MessageHandler(filters.AUDIO, process_audio)
 
-    bot.add_handler(start_handler)
-    bot.add_handler(echo_handler)
-    bot.add_handler(audio_handler)
+    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler, audio_handler])
 
-    # The app will be running constantly checking for new events
-    bot.run_polling()
+
+if __name__ == '__main__':
+    run_whisper_bot()
