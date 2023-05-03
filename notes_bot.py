@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from common_bot import allowed_user, build_bot, bot_start, run_telegram_bot
+from bot_common import allowed_user, build_bot, bot_start, run_telegram_bot
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -26,7 +26,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=update.effective_chat.id, text="pong")
         else:
             try:
-                my_notion.add_block(parent_id=NOTION_PAGE_ID, text=received_message_text, block_type="bulleted_list_item")
+                my_notion.add_block(parent_id=os.getenv("NOTION_PAGE_ID"), text=received_message_text, block_type="bulleted_list_item")
                 # reply with success message
                 await update.message.reply_text("Note stored")
             except Exception as e:
@@ -36,7 +36,6 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def run_notes_bot():
-    my_notion.add_block(parent_id=NOTION_PAGE_ID, text="Hello Worlds", block_type="bulleted_list_item")
 
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
