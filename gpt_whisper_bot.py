@@ -3,10 +3,12 @@ import logging
 from typing import List
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 from adapters.gpt_adapter import OpenAI
 from adapters.whisper_adapter import transcribe_audio_file
-from bot_common import allowed_user, build_bot, bot_start, run_telegram_bot
+from bot_actions import action_ping
+from bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder
+from bot_handler_factory import exact_match_factory, first_chars_lower_factory, catch_all_condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -28,6 +30,37 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             # reply with welcome message
             await update.message.reply_text("I don't know how to answer to that")
+
+
+
+condition_gpt4 = first_chars_lower_factory(4, 'gpt4')
+condition_gpt = first_chars_lower_factory(3, 'gpt')
+
+
+
+async def action_gpt4(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Answering with GPT4")
+    response = my_open_ai.answer_message(update.message.text[4:], model="gpt-4")
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+
+
+async def action_gpt3(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Answering with GPT3")
+    response = my_open_ai.answer_message(update.message.text[3:])
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=response)
+
+
+async def action_catch_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("I don't know how to answer to that")
+
+
+reply = reply_builder({
+    condition_ping: action_ping,
+    condition_gpt4: action_gpt4,
+    condition_gpt: action_gpt3,
+    condition_catch_all: action_catch_all,  # This should be the last entry in the dictionary
+})
+
 
 
 #  This method will be called each time the bot receives an audio file
