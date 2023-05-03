@@ -1,8 +1,8 @@
 import os
 import logging
-from typing import List, Callable, Coroutine
+from typing import List, Callable, Coroutine, TypeVar, Any, Dict
 from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, ContextTypes
+from telegram.ext import ApplicationBuilder, ContextTypes, Application, ExtBot, CallbackContext, JobQueue
 from telegram import Update
 
 
@@ -16,11 +16,12 @@ logging.basicConfig(
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 
+
 def allowed_user(update: Update) -> bool:
     return update.effective_chat.id in allowed_chat_ids
 
-def build_bot(token: str) -> ApplicationBuilder:
-    return ApplicationBuilder().token(token).build()
+
+
 
 
 def bot_start(welcome_message: str) -> Callable[[Update, ContextTypes.DEFAULT_TYPE], Coroutine]:
@@ -31,8 +32,20 @@ def bot_start(welcome_message: str) -> Callable[[Update, ContextTypes.DEFAULT_TY
     return start_command
 
 
-def add_handlers(bot, *handlers):
+def build_bot(token: str) -> Application:
+    return ApplicationBuilder().token(token).build()
+
+Handler = TypeVar("Handler", bound=Any)
+
+def run_telegram_bot(token: str, handlers: List[Handler]):
+    # This comes directly from the telegram bot library
+    bot = build_bot(token)
+
+    # The telegram bot manages events to process through handlers:
+    # For each handled event group, the relevant function (defined above) will be invoked
     for handler in handlers:
         bot.add_handler(handler)
 
+    # The app will be running constantly checking for new events
+    bot.run_polling()
 

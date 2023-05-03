@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from common_bot import allowed_user, build_bot, add_handlers, bot_start
+from common_bot import allowed_user, build_bot, bot_start, run_telegram_bot
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -35,15 +35,8 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
-
-# Remove the temporary audio file
-
-
-if __name__ == '__main__':
+def run_notes_bot():
     my_notion.add_block(parent_id=NOTION_PAGE_ID, text="Hello Worlds", block_type="bulleted_list_item")
-
-    # This comes directly from the telegram bot library
-    bot = ApplicationBuilder().token(os.getenv('TELEGRAM_BOT_TOKEN')).build()
 
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
@@ -51,8 +44,8 @@ if __name__ == '__main__':
     start_handler = CommandHandler('start', start_command)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
 
-    bot.add_handler(start_handler)
-    bot.add_handler(echo_handler)
+    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler])
 
-    # The app will be running constantly checking for new events
-    bot.run_polling()
+
+if __name__ == '__main__':
+    run_notes_bot()
