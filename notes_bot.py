@@ -3,9 +3,11 @@ import logging
 from typing import List
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import filters, MessageHandler, ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from bot_common import allowed_user, build_bot, bot_start, run_telegram_bot
+from bot_actions import action_ping
+from bot_common import bot_start, run_telegram_bot, reply_builder
+from bot_handler_factory import condition_ping, condition_catch_all
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -15,23 +17,20 @@ allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CH
 
 
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
-NOTION_PAGE_ID = "20fe25981f634cea8d90098dddb543a0"
+
+async def action_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        my_notion.add_block(parent_id=os.getenv("NOTION_PAGE_ID"), text=update.message.text, block_type="bulleted_list_item")
+        await update.message.reply_text("Note stored")
+    except Exception as e:
+        logging.error(f"Error while adding block to Notion: {e}")
+        await update.message.reply_text(f"Failed to store note: {e}")
 
 
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if allowed_user(update):
-        logging.info(f"Replying message from verified user")
-        received_message_text = update.message.text
-        if received_message_text == 'ping':
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="pong")
-        else:
-            try:
-                my_notion.add_block(parent_id=os.getenv("NOTION_PAGE_ID"), text=received_message_text, block_type="bulleted_list_item")
-                # reply with success message
-                await update.message.reply_text("Note stored")
-            except Exception as e:
-                logging.error(f"Error while adding block to Notion: {e}")
-                await update.message.reply_text(f"Failed to store note: {e}")
+reply = reply_builder({
+    condition_ping: action_ping,
+    condition_catch_all: action_notes,
+})
 
 
 

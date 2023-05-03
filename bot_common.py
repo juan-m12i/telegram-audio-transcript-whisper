@@ -1,10 +1,11 @@
 import os
 import logging
-from typing import List, Callable, Coroutine, TypeVar, Any
+from typing import List, Callable, Coroutine, TypeVar, Any, Dict
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update
 
+from bot_types import ReplyAction
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -27,6 +28,22 @@ def bot_start(welcome_message: str) -> Callable[[Update, ContextTypes.DEFAULT_TY
             await update.message.reply_text(welcome_message)
 
     return start_command
+
+
+def reply_builder(actions: Dict[str, ReplyAction]) -> ReplyAction:
+    async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if allowed_user(update):
+            logging.info(f"Replying message from verified user")
+            received_message_text = update.message.text
+
+            for condition, action in actions.items():
+                if condition(received_message_text):
+                    await action(update, context)
+                    break
+            else:
+                await update.message.reply_text("I don't know how to answer to that")
+
+    return reply
 
 
 def build_bot(token: str) -> Application:

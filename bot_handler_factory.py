@@ -4,6 +4,12 @@ from typing import Callable
 Condition = Callable[[str], bool]
 
 
+def lower_match_factory(value: str) -> Condition:
+    def exact_match(text: str) -> bool:
+        return text.lower() == value.lower()
+    return exact_match
+
+
 def exact_match_factory(value: str) -> Condition:
     def exact_match(text: str) -> bool:
         return text == value
@@ -32,3 +38,7 @@ def catch_all_condition() -> Condition:
     def always_true(text: str) -> bool:
         return True
     return always_true
+
+
+condition_ping = exact_match_factory('ping')
+condition_catch_all = catch_all_condition()
