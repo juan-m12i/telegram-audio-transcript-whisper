@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
 from adapters.notion_adapter import NotionAdapter
-from bot.bot_actions import action_ping
+from bot.bot_actions import action_ping, action_reply_factory
 from bot.bot_common import run_telegram_bot, reply_builder, allowed_user
 from bot.bot_conditions import condition_ping, condition_catch_all
 from notes_bot import action_notes
@@ -69,11 +69,12 @@ def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
     start_handler = CommandHandler('start', draw_buttons)
+    ver_handler = CommandHandler('ver', action_reply_factory("Dev Bot"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 
     logging.info("Starting DEV bot")
-    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler, callback_handler])
+    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, ver_handler, echo_handler, callback_handler])
 
 
 if __name__ == '__main__':

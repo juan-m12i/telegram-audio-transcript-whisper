@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from bot.bot_actions import action_ping
+from bot.bot_actions import action_ping, action_reply_factory
 from bot.bot_common import bot_start, run_telegram_bot, reply_builder
 from bot.bot_conditions import condition_ping, condition_catch_all
 
@@ -38,10 +38,11 @@ def run_notes_bot():
     # For each handled event group, the relevant function (defined above) will be invoked
     start_command = bot_start("Welcome, I'd love to help with your notes")
     start_handler = CommandHandler('start', start_command)
+    ver_handler = CommandHandler('ver', action_reply_factory("Notes Bot"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
 
     logging.info("Starting Notes bot")
-    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler])
+    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, ver_handler, echo_handler])
 
 
 if __name__ == '__main__':
