@@ -69,7 +69,7 @@ def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
     start_handler = CommandHandler('start', draw_buttons)
-    ver_handler = CommandHandler('ver', action_reply_factory("Dev Bot"))
+    ver_handler = CommandHandler('ver', action_reply_factory(f"Dev Bot running on {os.getenv('THIS_MACHINE')}"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 

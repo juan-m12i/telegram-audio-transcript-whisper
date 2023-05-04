@@ -1,9 +1,11 @@
 import os
 import logging
 from typing import List, Callable, Coroutine, TypeVar, Any, Dict
+
+import asyncio
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
-from telegram import Update
+from telegram import Update, Bot
 
 from bot.bot_lookup import bots_lookup
 from bot.bot_types import ReplyAction, Condition
@@ -17,6 +19,7 @@ logging.basicConfig(
 )
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
+chat_ids_report: List[int] = [int(chat_id) for chat_id in os.getenv('STARTUP_CHAT_IDS_REPORT').split(',')]
 
 
 def allowed_user(update: Update) -> bool:
@@ -53,6 +56,10 @@ def build_bot(token: str) -> Application:
 
 Handler = TypeVar("Handler", bound=Any)
 
+async def send_startup_message(token: str, chat_id: int, message: str):
+    bot = Bot(token)
+    await bot.send_message(chat_id, message)
+
 
 def run_telegram_bot(token: str, handlers: List[Handler]):
     # This comes directly from the telegram bot library
@@ -66,5 +73,12 @@ def run_telegram_bot(token: str, handlers: List[Handler]):
     # The app will be running constantly checking for new events
 
     bot_token_fingerprint = f"{token[:4]}..{token[-4:]}"
-    logging.info(f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)}")
+    init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
+                   f" {os.environ.get('THIS_MACHINE')}"
+    logging.info(init_message)
+
+    loop = asyncio.get_event_loop()
+    for chat_id in chat_ids_report:
+        loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bots_lookup.get(bot_token_fingerprint)} on {os.environ.get('THIS_MACHINE')}"))
     bot.run_polling()
+
