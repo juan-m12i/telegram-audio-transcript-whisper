@@ -1,7 +1,5 @@
 import re
-from typing import Callable
-
-Condition = Callable[[str], bool]
+from bot_types import Condition
 
 
 def lower_match_factory(value: str) -> Condition:
@@ -35,10 +33,11 @@ def regex_match_factory(pattern: str) -> Condition:
 
 
 def catch_all_condition() -> Condition:
-    def always_true(text: str) -> bool:
+    def always_true(_: str) -> bool:
         return True
     return always_true
 
 
-condition_ping = exact_match_factory('ping')
+# Common Conditions
+condition_ping = lower_match_factory('ping')
 condition_catch_all = catch_all_condition()

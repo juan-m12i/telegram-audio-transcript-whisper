@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 # TODO refactor the methods of this class into something more idiomatic, it should be cleaner
+# TODO find ways to "clear" the conversation, currently it's reusing everything
 class OpenAI:
     def __init__(self, api_key=os.getenv("OPEN_AI_API_KEY"), model: Optional[str] = None):
         # Set up OpenAI API key
@@ -21,10 +23,10 @@ class OpenAI:
             model = self.model
         response = openai.ChatCompletion.create(
             model=model,  # The name of the OpenAI chatbot model to use
-            messages=message_log,   # The conversation history up to this point, as a list of dictionaries
+            messages=message_log,  # The conversation history up to this point, as a list of dictionaries
             # max_tokens=4096,        # The maximum number of tokens (words or subwords) in the generated response
-            stop=None,              # The stopping sequence for the generated response, if any (not used here)
-            temperature=0.7,        # The "creativity" of the generated response (higher temperature = more creative)
+            stop=None,  # The stopping sequence for the generated response, if any (not used here)
+            temperature=0.7,  # The "creativity" of the generated response (higher temperature = more creative)
         )
 
         # Find the first response from the chatbot that has text in it (some responses may not have text)

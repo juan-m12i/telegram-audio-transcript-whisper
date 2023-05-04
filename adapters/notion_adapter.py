@@ -3,10 +3,8 @@ from datetime import datetime
 from typing import Optional
 from dotenv import load_dotenv
 from notion_client import Client
+
 load_dotenv()
-
-
-
 
 
 class NotionAdapter:
@@ -67,5 +65,3 @@ class NotionAdapter:
         ret = self._client.blocks.children.append(parent_id, children=[block_dict])
 
         return ret
-
-
