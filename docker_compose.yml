@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  gpt_whisper_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: gpt_whisper_bot.py
+    container_name: cont-telegram-whisper-bot
+    image: img-telegram-whisper-bot
+    env_file: gpt_whisper_bot.env
+
+  notes_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: notes_bot.py
+    container_name: cont-telegram-notes-bot
+    image: img-telegram-notes-bot
+    env_file: notes_bot.env
+

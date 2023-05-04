@@ -35,7 +35,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Send me a message to get a summary.")
     elif query_data == "Blue":
         blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
-        await query.message.reply_text(f"{int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
+        await query.message.reply_text(f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
@@ -72,6 +72,7 @@ def run_dev_bot():
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 
+    logging.info("Starting DEV bot")
     run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler, callback_handler])
 
 

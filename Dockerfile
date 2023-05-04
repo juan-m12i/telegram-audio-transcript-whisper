@@ -8,4 +8,8 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-CMD ["python", "gpt_whisper_bot.py"]
+ARG BOT_SCRIPT=dev_bot.py
+ENV BOT_SCRIPT_ENV=${BOT_SCRIPT}
+CMD python -u "${BOT_SCRIPT_ENV}"
+
+

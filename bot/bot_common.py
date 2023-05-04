@@ -63,4 +63,6 @@ def run_telegram_bot(token: str, handlers: List[Handler]):
         bot.add_handler(handler)
 
     # The app will be running constantly checking for new events
+
+    logging.info(f"Running telegram bot {token[:4]}..{token[-4:]}")
     bot.run_polling()

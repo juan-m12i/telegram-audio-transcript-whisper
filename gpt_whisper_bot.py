@@ -82,6 +82,8 @@ def run_whisper_bot():
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     audio_handler = MessageHandler(filters.AUDIO, process_audio)
 
+    # Run the bot
+    logging.info("Starting Whisper/GPT bot")
     run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler, audio_handler])
 
 

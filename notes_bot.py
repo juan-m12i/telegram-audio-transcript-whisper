@@ -40,6 +40,7 @@ def run_notes_bot():
     start_handler = CommandHandler('start', start_command)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
 
+    logging.info("Starting Notes bot")
     run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, echo_handler])
 
 
