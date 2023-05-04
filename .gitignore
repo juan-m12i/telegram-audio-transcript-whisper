@@ -5,6 +5,8 @@ __pycache__/
 .idea
 audio_files/
 
+*.env
+
 # C extensions
 *.so
 
