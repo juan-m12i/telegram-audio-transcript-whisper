@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
-from bot_actions import action_ping
-from bot_common import bot_start, run_telegram_bot, reply_builder
-from bot_handler_factory import condition_ping, condition_catch_all
+from bot.bot_actions import action_ping
+from bot.bot_common import bot_start, run_telegram_bot, reply_builder
+from bot.bot_handler_factory import condition_ping, condition_catch_all
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
