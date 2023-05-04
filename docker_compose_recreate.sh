@@ -6,4 +6,5 @@ DOCKER_COMPOSE_FILE="docker_compose.yml"
 
 
 docker-compose -f "$DOCKER_COMPOSE_FILE" down
-docker-compose -f "$DOCKER_COMPOSE_FILE" up -d
+docker-compose -f "$DOCKER_COMPOSE_FILE" build
+docker-compose -f "$DOCKER_COMPOSE_FILE" up -d --force-recreate
