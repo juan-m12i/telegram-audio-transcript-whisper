@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update
 
+from bot.bot_lookup import bots_lookup
 from bot.bot_types import ReplyAction, Condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
@@ -64,5 +65,6 @@ def run_telegram_bot(token: str, handlers: List[Handler]):
 
     # The app will be running constantly checking for new events
 
-    logging.info(f"Running telegram bot {token[:4]}..{token[-4:]}")
+    bot_token_fingerprint = f"{token[:4]}..{token[-4:]}"
+    logging.info(f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)}")
     bot.run_polling()

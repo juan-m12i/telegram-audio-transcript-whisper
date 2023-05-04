@@ -21,3 +21,13 @@ services:
     image: img-telegram-notes-bot
     env_file: notes_bot.env
 
+
+  dev_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: dev_bot.py
+    container_name: cont-telegram-dev-bot
+    image: img-telegram-dev-bot
+    env_file: dev_bot.env
