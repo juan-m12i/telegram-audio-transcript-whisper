@@ -8,9 +8,9 @@ from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 
 from adapters.gpt_adapter import OpenAI
 from adapters.whisper_adapter import transcribe_audio_file
-from bot_actions import action_ping
-from bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder
-from bot_conditions import first_chars_lower_factory, condition_ping, \
+from bot.bot_actions import action_ping
+from bot.bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder
+from bot.bot_conditions import first_chars_lower_factory, condition_ping, \
     condition_catch_all
 
 load_dotenv()  # Python module to load environment variables from a .env file

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update
 
-from bot_types import ReplyAction
+from bot.bot_types import ReplyAction, Condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -30,7 +30,7 @@ def bot_start(welcome_message: str) -> Callable[[Update, ContextTypes.DEFAULT_TY
     return start_command
 
 
-def reply_builder(actions: Dict[str, ReplyAction]) -> ReplyAction:
+def reply_builder(actions: Dict[Condition, ReplyAction]) -> ReplyAction:
     async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if allowed_user(update):
             logging.info(f"Replying message from verified user")
