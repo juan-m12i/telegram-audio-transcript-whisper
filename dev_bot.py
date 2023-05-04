@@ -1,6 +1,8 @@
 import os
 import logging
-from typing import List
+from typing import List, Dict
+
+import requests
 from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
@@ -31,7 +33,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text("Send me a message to get a GPT-4 response.")
     elif query_data == "Summary":
         await query.message.reply_text("Send me a message to get a summary.")
-
+    elif query_data == "Blue":
+        blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+        await query.message.reply_text(f"{int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
@@ -44,6 +48,7 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             [
                 InlineKeyboardButton("Summary", callback_data="Summary"),
+                InlineKeyboardButton("Blue", callback_data="Blue"),
             ],
         ]
 
@@ -52,7 +57,6 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "Choose an option:", reply_markup=reply_markup
         )
-
 
 
 reply = reply_builder({
