@@ -1,11 +1,11 @@
 import os
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import asyncio
 import requests
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, Bot, CallbackQuery
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
 from adapters.notion_adapter import NotionAdapter
 from bot.bot_actions import action_ping, action_reply_factory
@@ -22,11 +22,8 @@ allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CH
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 
-
-
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
+    query: Optional[CallbackQuery] = update.callback_query
     query_data = query.data
 
     if query_data == "GPT3":
@@ -38,6 +35,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query_data == "Blue":
         blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
         await query.message.reply_text(f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
+
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
@@ -72,6 +70,9 @@ reply = reply_builder({
 def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    bot = Bot(token)
+
     start_handler = CommandHandler('start', draw_buttons)
     ver_handler = CommandHandler('ver', action_reply_factory(f"Dev Bot running on {os.getenv('THIS_MACHINE')}"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
@@ -83,7 +84,7 @@ def run_dev_bot():
                                                  f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}"))
 
     logging.info("Starting DEV bot")
-    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, ver_handler, echo_handler, callback_handler])
+    run_telegram_bot(token, [start_handler, ver_handler, echo_handler, callback_handler])
 
 
 if __name__ == '__main__':
