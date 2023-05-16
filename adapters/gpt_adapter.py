@@ -13,7 +13,7 @@ class OpenAI:
     def __init__(self, api_key=os.getenv("OPEN_AI_API_KEY"), model: Optional[str] = None):
         # Set up OpenAI API key
         openai.api_key = api_key
-        self.messages: Optional[List[dict]] = None
+        self.messages: Optional[List[dict]] = None  # TODO review how this message history works, it should be easier to cleaj
         self.model = model or "gpt-3.5-turbo"
 
     # Function to send a message to the OpenAI chatbot model and return its response
