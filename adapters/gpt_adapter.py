@@ -62,6 +62,9 @@ class OpenAI:
         self.process_message(message, model=model)
         return f"{self.messages[-1].get('content')} \nmessage #{len(self.messages)}"
 
+    def clear_messages(self):
+        self.messages = None
+
 
 if __name__ == '__main__':
     my_openai = OpenAI()
