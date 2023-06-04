@@ -40,4 +40,5 @@ def catch_all_condition() -> Condition:
 
 # Common Conditions
 condition_ping = lower_match_factory('ping')
+condition_blue = lower_match_factory('blue')
 condition_catch_all = catch_all_condition()

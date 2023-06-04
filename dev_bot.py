@@ -8,10 +8,9 @@ from dotenv import load_dotenv
 from telegram import Update, Bot, CallbackQuery
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
 from adapters.notion_adapter import NotionAdapter
-from bot.bot_actions import action_ping, action_reply_factory
+from bot.bot_actions import action_ping, action_reply_factory, action_unknown
 from bot.bot_common import run_telegram_bot, reply_builder, allowed_user, send_startup_message
-from bot.bot_conditions import condition_ping, condition_catch_all
-from notes_bot import action_notes
+from bot.bot_conditions import condition_ping, condition_catch_all, condition_blue
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 load_dotenv()  # Python module to load environment variables from a .env file
@@ -35,6 +34,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query_data == "Blue":
         blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
         await query.message.reply_text(f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
+
+
+async def action_blue(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+    await update.message.reply_text(
+        f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -63,7 +68,8 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 reply = reply_builder({
     condition_ping: action_ping,
-    condition_catch_all: action_notes,
+    condition_blue: action_blue,
+    condition_catch_all: action_unknown,
 })
 
 
