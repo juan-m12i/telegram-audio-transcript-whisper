@@ -3,7 +3,8 @@ import logging
 from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 
 import asyncio
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
@@ -92,23 +93,24 @@ class TelegramBot:
         if handlers is None:
             handlers = []
         self.handlers: List = handlers
-        self.bot = build_bot(token)
-        self.scheduler = BackgroundScheduler()
+        self.bot = Bot(token)
+        self.application = build_bot(token)
+        self.scheduler = AsyncIOScheduler()
 
     def add_handler(self, handler):
         self.handlers.append(handler)
+
+    async def send_message(self, chat_id: int, text: str, **kwargs):
+        return await self.bot.send_message(chat_id, text, **kwargs)
 
     def schedule_task(self, task_func: Callable, schedule: str, timezone: str, args: list):
         hour, minute = schedule.split(':')
         self.scheduler.add_job(task_func, 'cron', args=args, day_of_week='mon-sun', hour=int(hour), minute=int(minute),
                                timezone=timezone)
 
-    async def send_message(self, chat_id: int, text: str, **kwargs):
-        return await self.bot.send_message(chat_id, text, **kwargs)
-
     def run(self):
         for handler in self.handlers:
-            self.bot.add_handler(handler)
+            self.application.add_handler(handler)
 
         bot_token_fingerprint = f"{self.token[:4]}..{self.token[-4:]}"
         init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
@@ -122,7 +124,7 @@ class TelegramBot:
                                                          f"{os.environ.get('THIS_MACHINE')}"))
 
         self.scheduler.start()
-        self.bot.run_polling()
+        self.application.run_polling()
 
 
     def stop(self):
