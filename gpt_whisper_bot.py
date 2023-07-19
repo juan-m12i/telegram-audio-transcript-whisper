@@ -48,6 +48,7 @@ reply = reply_builder({
 #  This method will be called each time the bot receives an audio file
 async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
+        my_open_ai.clear_messages()  # TODO improve treatment of message history
         logging.info(f"Transcribing audio file from verified user")
         audio_file = update.message.audio  # Access the audio file
 
