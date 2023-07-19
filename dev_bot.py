@@ -76,8 +76,8 @@ reply = reply_builder({
 def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
-    bot = Bot(token)
+
+    # bot = Bot(token)
 
     start_handler = CommandHandler('start', draw_buttons)
     ver_handler = CommandHandler('ver', action_reply_factory(f"Dev Bot running on {os.getenv('THIS_MACHINE')}"))
@@ -86,6 +86,8 @@ def run_dev_bot():
 
     loop = asyncio.get_event_loop()
     blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
     loop.run_until_complete(send_startup_message(os.getenv('TELEGRAM_BOT_TOKEN'), allowed_chat_ids[0],
                                                  f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}"))
 
