@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Callable, Coroutine, TypeVar, Any, Dict
+from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 
 import asyncio
 from dotenv import load_dotenv
@@ -8,6 +8,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
 
 from bot.bot_lookup import bots_lookup
+from bot.bot_schedule import schedule_task
 from bot.bot_types import ReplyAction, Condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
@@ -61,7 +62,7 @@ async def send_startup_message(token: str, chat_id: int, message: str):
     await bot.send_message(chat_id, message)
 
 
-def run_telegram_bot(token: str, handlers: List[Handler]):
+def run_telegram_bot(token: str, handlers: List[Handler], scheduled_tasks: Optional[List[Dict[str, Any]]] = None):
     # This comes directly from the telegram bot library
     bot = build_bot(token)
 
@@ -78,7 +79,41 @@ def run_telegram_bot(token: str, handlers: List[Handler]):
     logging.info(init_message)
 
     loop = asyncio.get_event_loop()
+    # TODO this should print which bot code is running, not where it's hosted
     for chat_id in chat_ids_report:
         loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bots_lookup.get(bot_token_fingerprint)} on {os.environ.get('THIS_MACHINE')}"))
+
+    # Add this block to handle the scheduled tasks
+    if scheduled_tasks is not None:
+        for task in scheduled_tasks:
+            task_func = task.pop('task_func')
+            task_args = task.pop('task_args', {})
+            schedule_task(task_func, **task, task_args=task_args)
+
     bot.run_polling()
 
+class TelegramBot:
+    def __init__(self, token: str, handlers: Optional[List[Handler]] = None):
+        self.token = token
+        if handlers is None:
+            handlers = []
+        self.handlers: List = handlers
+        self.bot = build_bot(token)
+
+    def run(self):
+        for handler in self.handlers:
+            self.bot.add_handler(handler)
+
+        bot_token_fingerprint = f"{self.token[:4]}..{self.token[-4:]}"
+        init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
+                       f" {os.environ.get('THIS_MACHINE')}"
+        logging.info(init_message)
+
+        loop = asyncio.get_event_loop()
+        # TODO this should print which bot code is running, not where it's hosted
+        for chat_id in chat_ids_report:
+            loop.run_until_complete(send_startup_message(self.token, chat_id,
+                                                         f"Running {bots_lookup.get(bot_token_fingerprint)} on "
+                                                         f"{os.environ.get('THIS_MACHINE')}"))
+
+        self.bot.run_polling()

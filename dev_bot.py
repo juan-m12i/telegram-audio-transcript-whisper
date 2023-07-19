@@ -4,23 +4,27 @@ from typing import List, Dict
 
 import requests
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, Bot
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
 from adapters.notion_adapter import NotionAdapter
 from bot.bot_actions import action_ping, action_reply_factory
-from bot.bot_common import run_telegram_bot, reply_builder, allowed_user
+from bot.bot_common import reply_builder, allowed_user, TelegramBot
 from bot.bot_conditions import condition_ping, condition_catch_all
 from notes_bot import action_notes
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
-allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(
-    ',')]  # Pythonic way of creating a list, behaves like a loop
+# Pythonic way of creating a list, behaves like a loop
+allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+def send_blue_message(bot: Bot, chat_ids: List[int]):
+    blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+    for chat_id in chat_ids:
+        bot.send_message(chat_id, f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,8 +77,24 @@ def run_dev_bot():
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 
+    schedules = ["10:00", "13:00", "16:00", "19:00"]
+    timezone = 'America/Argentina/Buenos_Aires'
+
     logging.info("Starting DEV bot")
-    run_telegram_bot(os.getenv('TELEGRAM_BOT_TOKEN'), [start_handler, ver_handler, echo_handler, callback_handler])
+    handlers = [start_handler, ver_handler, echo_handler, callback_handler]
+    bot = TelegramBot(token=os.getenv('TELEGRAM_BOT_TOKEN'), handlers=handlers)
+
+    scheduled_tasks = [
+        {
+            'task_func': send_blue_message,
+            'schedules': schedules,
+            'timezone': timezone,
+            'task_args': {'bot': bot, 'chat_ids': allowed_chat_ids},
+        },
+    ]
+
+    bot.run()
+
 
 
 if __name__ == '__main__':
