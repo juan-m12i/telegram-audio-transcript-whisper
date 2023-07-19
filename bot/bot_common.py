@@ -1,8 +1,10 @@
 import os
 import logging
-from typing import List, Callable, Coroutine, TypeVar, Any, Dict
+from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 
 import asyncio
+#from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
@@ -61,7 +63,7 @@ async def send_startup_message(token: str, chat_id: int, message: str):
     await bot.send_message(chat_id, message)
 
 
-def run_telegram_bot(token: str, handlers: List[Handler]):
+def run_telegram_bot(token: str, handlers: List[Handler], scheduled_tasks: Optional[List[Dict[str, Any]]] = None):
     # This comes directly from the telegram bot library
     bot = build_bot(token)
 
@@ -78,7 +80,53 @@ def run_telegram_bot(token: str, handlers: List[Handler]):
     logging.info(init_message)
 
     loop = asyncio.get_event_loop()
+    # TODO this should print which bot code is running, not where it's hosted
     for chat_id in chat_ids_report:
         loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bots_lookup.get(bot_token_fingerprint)} on {os.environ.get('THIS_MACHINE')}"))
+
     bot.run_polling()
 
+
+class TelegramBot:
+    def __init__(self, token: str, handlers: Optional[List[Any]] = None):
+        self.token = token
+        if handlers is None:
+            handlers = []
+        self.handlers: List = handlers
+        self.bot = Bot(token)
+        self.application = build_bot(token)
+        self.scheduler = AsyncIOScheduler()
+
+    def add_handler(self, handler):
+        self.handlers.append(handler)
+
+    async def send_message(self, chat_id: int, text: str, **kwargs):
+        return await self.bot.send_message(chat_id, text, **kwargs)
+
+    def schedule_task(self, task_func: Callable, schedule: str, timezone: str, args: list):
+        hour, minute = schedule.split(':')
+        self.scheduler.add_job(task_func, 'cron', args=args, day_of_week='mon-sun', hour=int(hour), minute=int(minute),
+                               timezone=timezone)
+
+    def run(self):
+        for handler in self.handlers:
+            self.application.add_handler(handler)
+
+        bot_token_fingerprint = f"{self.token[:4]}..{self.token[-4:]}"
+        init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
+                       f" {os.environ.get('THIS_MACHINE')}"
+        logging.info(init_message)
+
+        loop = asyncio.get_event_loop()
+        for chat_id in chat_ids_report:
+            loop.run_until_complete(send_startup_message(self.token, chat_id,
+                                                         f"Running {bots_lookup.get(bot_token_fingerprint)} on "
+                                                         f"{os.environ.get('THIS_MACHINE')}"))
+
+        self.scheduler.start()
+        self.application.run_polling()
+
+
+    def stop(self):
+        self.bot.stop_polling()
+        self.scheduler.shutdown()
