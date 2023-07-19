@@ -21,10 +21,10 @@ allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CH
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 
-def send_blue_message(bot: Bot, chat_ids: List[int]):
-    blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+async def send_blue_message(bot: TelegramBot, chat_ids: List[int]):
+    blue_quotes = await get_blue_quote()
     for chat_id in chat_ids:
-        bot.send_message(chat_id, f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
+        await bot.send_message(chat_id, f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -77,21 +77,17 @@ def run_dev_bot():
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 
-    schedules = ["10:00", "13:00", "16:00", "19:00"]
-    timezone = 'America/Argentina/Buenos_Aires'
 
     logging.info("Starting DEV bot")
     handlers = [start_handler, ver_handler, echo_handler, callback_handler]
     bot = TelegramBot(token=os.getenv('TELEGRAM_BOT_TOKEN'), handlers=handlers)
 
-    scheduled_tasks = [
-        {
-            'task_func': send_blue_message,
-            'schedules': schedules,
-            'timezone': timezone,
-            'task_args': {'bot': bot, 'chat_ids': allowed_chat_ids},
-        },
-    ]
+    # Schedule tasks
+    schedules = ["10:00", "13:00", "16:00", "19:00"]
+    schedules = ["12:02", "12:03", "12:00", "12:01"]
+    timezone = 'America/Argentina/Buenos_Aires'
+    for schedule in schedules:
+        bot.schedule_task(send_blue_message, schedule, timezone, [bot, allowed_chat_ids])
 
     bot.run()
 

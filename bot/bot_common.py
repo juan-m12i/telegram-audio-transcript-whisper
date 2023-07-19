@@ -3,12 +3,12 @@ import logging
 from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 
 import asyncio
+from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
 
 from bot.bot_lookup import bots_lookup
-from bot.bot_schedule import schedule_task
 from bot.bot_types import ReplyAction, Condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
@@ -83,22 +83,28 @@ def run_telegram_bot(token: str, handlers: List[Handler], scheduled_tasks: Optio
     for chat_id in chat_ids_report:
         loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bots_lookup.get(bot_token_fingerprint)} on {os.environ.get('THIS_MACHINE')}"))
 
-    # Add this block to handle the scheduled tasks
-    if scheduled_tasks is not None:
-        for task in scheduled_tasks:
-            task_func = task.pop('task_func')
-            task_args = task.pop('task_args', {})
-            schedule_task(task_func, **task, task_args=task_args)
-
     bot.run_polling()
 
+
 class TelegramBot:
-    def __init__(self, token: str, handlers: Optional[List[Handler]] = None):
+    def __init__(self, token: str, handlers: Optional[List[Any]] = None):
         self.token = token
         if handlers is None:
             handlers = []
         self.handlers: List = handlers
         self.bot = build_bot(token)
+        self.scheduler = BackgroundScheduler()
+
+    def add_handler(self, handler):
+        self.handlers.append(handler)
+
+    def schedule_task(self, task_func: Callable, schedule: str, timezone: str, args: list):
+        hour, minute = schedule.split(':')
+        self.scheduler.add_job(task_func, 'cron', args=args, day_of_week='mon-sun', hour=int(hour), minute=int(minute),
+                               timezone=timezone)
+
+    async def send_message(self, chat_id: int, text: str, **kwargs):
+        return await self.bot.send_message(chat_id, text, **kwargs)
 
     def run(self):
         for handler in self.handlers:
@@ -110,10 +116,15 @@ class TelegramBot:
         logging.info(init_message)
 
         loop = asyncio.get_event_loop()
-        # TODO this should print which bot code is running, not where it's hosted
         for chat_id in chat_ids_report:
             loop.run_until_complete(send_startup_message(self.token, chat_id,
                                                          f"Running {bots_lookup.get(bot_token_fingerprint)} on "
                                                          f"{os.environ.get('THIS_MACHINE')}"))
 
+        self.scheduler.start()
         self.bot.run_polling()
+
+
+    def stop(self):
+        self.bot.stop_polling()
+        self.scheduler.shutdown()
