@@ -33,6 +33,18 @@ async def send_blue_message(bot: TelegramBot, chat_ids: List[int]):
         await bot.send_message(chat_id, f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 
+def get_gbp_usd_quote() -> float:
+    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=USD&apiKey={os.getenv('ANY_API_FX_KEY')}")
+    gbp_usd_rate = response.json().get("rates").get('GBP')
+    return 1/gbp_usd_rate
+
+
+async def send_gbp_usd_quote(bot: TelegramBot, chat_ids: List[int]):
+    gbp_usd_quote = get_gbp_usd_quote()
+    for chat_id in chat_ids:
+        await bot.send_message(chat_id, f"GBP/USD: {round(gbp_usd_quote, 3)}")
+
+
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -45,8 +57,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query_data == "Summary":
         await query.message.reply_text("Send me a message to get a summary.")
     elif query_data == "Blue":
-        blue_quotes: Dict[str, float] = requests.get("https://api.bluelytics.com.ar/v2/latest").json().get("blue")
+        blue_quotes: Dict[str, float] = get_blue_quote()
         await query.message.reply_text(f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
+    elif query_data == "pound":
+        gbp_usd_quote = get_gbp_usd_quote()
+        await query.message.reply_text(f"GBP/USD: {round(gbp_usd_quote, 3)}")
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
@@ -56,10 +71,11 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [
                 InlineKeyboardButton("GPT-3", callback_data="GPT3"),
                 InlineKeyboardButton("GPT-4", callback_data="GPT4"),
+                InlineKeyboardButton("Summary", callback_data="Summary"),
             ],
             [
-                InlineKeyboardButton("Summary", callback_data="Summary"),
                 InlineKeyboardButton("Blue", callback_data="Blue"),
+                InlineKeyboardButton("Pound", callback_data="pound"),
             ],
         ]
 
@@ -93,6 +109,11 @@ def run_dev_bot():
     timezone = 'America/Argentina/Buenos_Aires'
     for schedule in schedules:
         bot.schedule_task(send_blue_message, schedule, timezone, [bot, allowed_chat_ids])
+
+    schedules = ["7:00", "12:00", "18:00"]
+    timezone = 'America/Argentina/Buenos_Aires'
+    for schedule in schedules:
+        bot.schedule_task(send_gbp_usd_quote, schedule, timezone, [bot, allowed_chat_ids])
 
     bot.run()
 
