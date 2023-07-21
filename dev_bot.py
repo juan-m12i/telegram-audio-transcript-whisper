@@ -95,14 +95,16 @@ reply = reply_builder({
 def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
+
     start_handler = CommandHandler('start', draw_buttons)
     ver_handler = CommandHandler('ver', action_reply_factory(f"Dev Bot running on {os.getenv('THIS_MACHINE')}"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
 
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
     logging.info("Starting DEV bot")
     handlers = [start_handler, ver_handler, echo_handler, callback_handler]
-    bot = TelegramBot(token=os.getenv('TELEGRAM_BOT_TOKEN'), handlers=handlers)
+    bot = TelegramBot(token=token, handlers=handlers)
 
     # Schedule tasks
     schedules = ["10:00", "13:00", "16:00", "19:00"]
