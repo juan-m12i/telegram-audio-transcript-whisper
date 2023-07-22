@@ -105,7 +105,7 @@ class TelegramBot:
 
     def schedule_task(self, task_func: Callable, schedule: str, timezone: str, args: list):
         hour, minute = schedule.split(':')
-        self.scheduler.add_job(task_func, 'cron', args=args, day_of_week='mon-sun', hour=int(hour), minute=int(minute),
+        self.scheduler.add_job(task_func, 'cron', args=args, day_of_week='mon-fri', hour=int(hour), minute=int(minute),
                                timezone=timezone)
 
     def run(self):
