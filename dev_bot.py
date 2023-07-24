@@ -58,7 +58,6 @@ async def send_gbp_usd_quote(bot: TelegramBot, chat_ids: List[int]):
         await bot.send_message(chat_id, f"GBP/USD: {round(gbp_usd_quote, 3)}")
 
 
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     query_data = query.data
