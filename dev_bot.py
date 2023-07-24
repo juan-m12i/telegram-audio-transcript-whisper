@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import requests
 from dotenv import load_dotenv
@@ -19,6 +19,19 @@ load_dotenv()  # Python module to load environment variables from a .env file
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 
 my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
+
+
+def get_mep_quote() -> Optional[float]:
+    response = requests.get("http://escuderokevin.com.ar:7070/api/dolarbolsa")
+    mep_quote = response.json().get("venta")
+    return mep_quote
+
+
+async def send_mep_message(bot: TelegramBot, chat_ids: List[int]):
+    mep_quote = get_mep_quote()
+    for chat_id in chat_ids:
+        await bot.send_message(chat_id, f"Dolar MEP: {mep_quote}")
+
 
 
 def get_blue_quote():
@@ -62,6 +75,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query_data == "pound":
         gbp_usd_quote = get_gbp_usd_quote()
         await query.message.reply_text(f"GBP/USD: {round(gbp_usd_quote, 3)}")
+    elif query_data == "mep":
+        mep_quote = get_mep_quote()
+        await query.message.reply_text(f"Dolar MEP: {mep_quote}")
+    else:
+        await query.message.reply_text(f"Me no comprender")
 
 async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
@@ -76,6 +94,7 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [
                 InlineKeyboardButton("Blue", callback_data="Blue"),
                 InlineKeyboardButton("Pound", callback_data="pound"),
+                InlineKeyboardButton("Mep", callback_data="mep"),
             ],
         ]
 
@@ -116,6 +135,11 @@ def run_dev_bot():
     timezone = 'America/Argentina/Buenos_Aires'
     for schedule in schedules:
         bot.schedule_task(send_gbp_usd_quote, schedule, timezone, [bot, allowed_chat_ids])
+
+    schedules =  ["10:01", "13:01", "16:01", "19:01"]
+    timezone = 'America/Argentina/Buenos_Aires'
+    for schedule in schedules:
+        bot.schedule_task(send_mep_message, schedule, timezone, [bot, allowed_chat_ids])
 
     bot.run()
 
