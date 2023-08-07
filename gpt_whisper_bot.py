@@ -50,10 +50,17 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
         my_open_ai.clear_messages()  # TODO improve treatment of message history
         logging.info(f"Transcribing audio file from verified user")
-        audio_file = update.message.audio  # Access the audio file
+        if update.message.audio is not None:
+            audio_file = update.message.audio  # Access the audio file
+            local_file_path = f"audio_files/{audio_file.file_name}"
+        elif update.message.voice is not None:
+            audio_file = update.message.voice
+            local_file_path = f"audio_files/{audio_file.file_unique_id}.m4a"
+        else:
+            raise Exception("No audio message attached in update as audio or voice")
 
         # Download the audio file
-        local_file_path = f"audio_files/{audio_file.file_name}"
+
         file = await context.bot.get_file(file_id=audio_file.file_id)
         await file.download_to_drive(local_file_path)  #
 
@@ -81,7 +88,7 @@ def run_whisper_bot():
     start_command = bot_start("Welcome, I'd love to help with questions to GPT or audio transcriptions")
     start_handler = CommandHandler('start', start_command)
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
-    audio_handler = MessageHandler(filters.AUDIO, process_audio)
+    audio_handler = MessageHandler(filters.AUDIO | filters.VOICE, process_audio)
 
     # Run the bot
     logging.info("Starting Whisper/GPT bot")
