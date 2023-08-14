@@ -47,15 +47,38 @@ async def send_blue_message(bot: TelegramBot, chat_ids: List[int]):
 
 
 def get_gbp_usd_quote() -> float:
-    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=USD&apiKey={os.getenv('ANY_API_FX_KEY')}")
-    gbp_usd_rate = response.json().get("rates").get('GBP')
-    return 1/gbp_usd_rate
+    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=GBP&apiKey={os.getenv('ANY_API_FX_KEY')}")
+    gbp_usd_rate = response.json().get("rates").get('USD')
+    return gbp_usd_rate
 
 
 async def send_gbp_usd_quote(bot: TelegramBot, chat_ids: List[int]):
     gbp_usd_quote = get_gbp_usd_quote()
     for chat_id in chat_ids:
         await bot.send_message(chat_id, f"GBP/USD: {round(gbp_usd_quote, 3)}")
+
+
+def get_eur_usd_quote() -> float:
+    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=EUR&apiKey={os.getenv('ANY_API_FX_KEY')}")
+    eur_usd_rate = response.json().get("rates").get('USD')
+    return eur_usd_rate
+
+
+async def send_eur_usd_quote(bot: TelegramBot, chat_ids: List[int]):
+    eur_usd_quote = get_eur_usd_quote()
+    for chat_id in chat_ids:
+        await bot.send_message(chat_id, f"GBP/USD: {round(eur_usd_quote, 3)}")
+
+
+def get_gbp_eur_quote() -> float:
+    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=GBP&apiKey={os.getenv('ANY_API_FX_KEY')}")
+    gbp_eur_rate = response.json().get("rates").get('EUR')
+    return gbp_eur_rate
+
+async def send_gbp_eur_quote(bot: TelegramBot, chat_ids: List[int]):
+    gbp_eur_quote = get_gbp_eur_quote()
+    for chat_id in chat_ids:
+        await bot.send_message(chat_id, f"GBP/USD: {round(gbp_eur_quote, 3)}")
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -74,6 +97,12 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query_data == "pound":
         gbp_usd_quote = get_gbp_usd_quote()
         await query.message.reply_text(f"GBP/USD: {round(gbp_usd_quote, 3)}")
+    elif query_data == "eurusd":
+        eur_usd_quote = get_eur_usd_quote()
+        await query.message.reply_text(f"EUR/USD: {round(eur_usd_quote, 3)}")
+    elif query_data == "eurgbp":
+        gbp_eur_quote = get_gbp_eur_quote()
+        await query.message.reply_text(f"GBP/EUR: {round(gbp_eur_quote, 3)}")
     elif query_data == "mep":
         mep_quote = get_mep_quote()
         await query.message.reply_text(f"Dolar MEP: {mep_quote}")
@@ -94,6 +123,10 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("Blue", callback_data="Blue"),
                 InlineKeyboardButton("Pound", callback_data="pound"),
                 InlineKeyboardButton("Mep", callback_data="mep"),
+            ],
+            [
+                InlineKeyboardButton("EUR", callback_data="eurusd"),
+                InlineKeyboardButton("EURGBP", callback_data="eurgbp"),
             ],
         ]
 
