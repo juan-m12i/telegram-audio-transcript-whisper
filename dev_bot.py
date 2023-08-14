@@ -46,39 +46,34 @@ async def send_blue_message(bot: TelegramBot, chat_ids: List[int]):
         await bot.send_message(chat_id, f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
 
 
-def get_gbp_usd_quote() -> float:
-    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=GBP&apiKey={os.getenv('ANY_API_FX_KEY')}")
-    gbp_usd_rate = response.json().get("rates").get('USD')
-    return gbp_usd_rate
+def get_fx_quote(base: str, target: str) -> float:
+    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base={base}&apiKey={os.getenv('ANY_API_FX_KEY')}")
+    rate = response.json().get("rates").get(target)
+    return rate
+
+
+async def send_fx_quote(bot: TelegramBot, chat_ids: List[int], base, target):
+    fx_quote = get_fx_quote(base, target)
+    for chat_id in chat_ids:
+        await bot.send_message(chat_id, f"{base}/{target}: {round(fx_quote, 3)}")
 
 
 async def send_gbp_usd_quote(bot: TelegramBot, chat_ids: List[int]):
-    gbp_usd_quote = get_gbp_usd_quote()
+    gbp_usd_quote = get_fx_quote("GBP", "USD")
     for chat_id in chat_ids:
         await bot.send_message(chat_id, f"GBP/USD: {round(gbp_usd_quote, 3)}")
 
 
-def get_eur_usd_quote() -> float:
-    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=EUR&apiKey={os.getenv('ANY_API_FX_KEY')}")
-    eur_usd_rate = response.json().get("rates").get('USD')
-    return eur_usd_rate
-
-
 async def send_eur_usd_quote(bot: TelegramBot, chat_ids: List[int]):
-    eur_usd_quote = get_eur_usd_quote()
+    eur_usd_quote = get_fx_quote("EUR", "USD")
     for chat_id in chat_ids:
-        await bot.send_message(chat_id, f"GBP/USD: {round(eur_usd_quote, 3)}")
+        await bot.send_message(chat_id, f"EUR/USD: {round(eur_usd_quote, 3)}")
 
-
-def get_gbp_eur_quote() -> float:
-    response = requests.get(f"https://anyapi.io/api/v1/exchange/rates?base=GBP&apiKey={os.getenv('ANY_API_FX_KEY')}")
-    gbp_eur_rate = response.json().get("rates").get('EUR')
-    return gbp_eur_rate
 
 async def send_gbp_eur_quote(bot: TelegramBot, chat_ids: List[int]):
-    gbp_eur_quote = get_gbp_eur_quote()
+    gbp_eur_quote = get_fx_quote("GBP", "EUR")
     for chat_id in chat_ids:
-        await bot.send_message(chat_id, f"GBP/USD: {round(gbp_eur_quote, 3)}")
+        await bot.send_message(chat_id, f"GBP/EUR: {round(gbp_eur_quote, 3)}")
 
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -95,13 +90,13 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         blue_quotes: Dict[str, float] = get_blue_quote()
         await query.message.reply_text(f"Dolar Blue: {int(blue_quotes.get('value_buy'))} | {int(blue_quotes.get('value_sell'))}")
     elif query_data == "pound":
-        gbp_usd_quote = get_gbp_usd_quote()
+        gbp_usd_quote = get_fx_quote("GBP", "USD")
         await query.message.reply_text(f"GBP/USD: {round(gbp_usd_quote, 3)}")
     elif query_data == "eurusd":
-        eur_usd_quote = get_eur_usd_quote()
+        eur_usd_quote = get_fx_quote("EUR", "USD")
         await query.message.reply_text(f"EUR/USD: {round(eur_usd_quote, 3)}")
     elif query_data == "eurgbp":
-        gbp_eur_quote = get_gbp_eur_quote()
+        gbp_eur_quote = get_fx_quote("GBP", "EUR")
         await query.message.reply_text(f"GBP/EUR: {round(gbp_eur_quote, 3)}")
     elif query_data == "mep":
         mep_quote = get_mep_quote()
