@@ -104,7 +104,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await query.message.reply_text(f"Me no comprender")
 
-async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+async def draw_buttons_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
         logging.info(f"Drawing buttons for verified user")
 
@@ -132,6 +133,32 @@ async def draw_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+async def draw_buttons(bot: TelegramBot, chat_ids: List[int]):
+    for chat_id in chat_ids:
+        logging.info(f"Drawing buttons for verified user")
+
+        keyboard = [
+            [
+                InlineKeyboardButton("GPT-3", callback_data="GPT3"),
+                InlineKeyboardButton("GPT-4", callback_data="GPT4"),
+                InlineKeyboardButton("Summary", callback_data="Summary"),
+            ],
+            [
+                InlineKeyboardButton("Blue", callback_data="Blue"),
+                InlineKeyboardButton("Pound", callback_data="pound"),
+                InlineKeyboardButton("Mep", callback_data="mep"),
+            ],
+            [
+                InlineKeyboardButton("EUR", callback_data="eurusd"),
+                InlineKeyboardButton("EURGBP", callback_data="eurgbp"),
+            ],
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await bot.send_message(chat_id=chat_id, text="Choose an option:", reply_markup=reply_markup)
+
+
 reply = reply_builder({
     condition_ping: action_ping,
     condition_catch_all: action_notes,
@@ -142,7 +169,7 @@ def run_dev_bot():
     # The telegram bot manages events to process through handlers:
     # For each handled event group, the relevant function (defined above) will be invoked
 
-    start_handler = CommandHandler('start', draw_buttons)
+    start_handler = CommandHandler('start', draw_buttons_reply)
     ver_handler = CommandHandler('ver', action_reply_factory(f"Dev Bot running on {os.getenv('THIS_MACHINE')}"))
     echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), reply)
     callback_handler = CallbackQueryHandler(button_callback)
@@ -152,21 +179,30 @@ def run_dev_bot():
     handlers = [start_handler, ver_handler, echo_handler, callback_handler]
     bot = TelegramBot(token=token, handlers=handlers)
 
+    timezone = 'America/Argentina/Buenos_Aires'
+
     # Schedule tasks
     schedules = ["10:00", "13:00", "16:00", "19:00"]
-    timezone = 'America/Argentina/Buenos_Aires'
+
     for schedule in schedules:
         bot.schedule_task(send_blue_message, schedule, timezone, [bot, allowed_chat_ids])
 
-    schedules = ["7:00", "12:00", "18:00"]
-    timezone = 'America/Argentina/Buenos_Aires'
+    schedules = ["5:00", "7:00", "12:00", "18:00"]
     for schedule in schedules:
         bot.schedule_task(send_gbp_usd_quote, schedule, timezone, [bot, allowed_chat_ids])
 
-    schedules =  ["10:01", "13:01", "16:01", "19:01"]
-    timezone = 'America/Argentina/Buenos_Aires'
+    schedules = ["10:01", "13:01", "16:01", "19:01"]
     for schedule in schedules:
         bot.schedule_task(send_mep_message, schedule, timezone, [bot, allowed_chat_ids])
+
+
+    """
+    TODO, implement the "draw_buttons" function consistent with the schedule, currently it's failing as it's not the 
+    same method signature than the send_XXX_message functions
+    """
+    schedules = ["4:45"]
+    for schedule in schedules:
+        bot.schedule_task(draw_buttons, schedule, timezone, [bot, allowed_chat_ids])
 
     bot.run()
 
