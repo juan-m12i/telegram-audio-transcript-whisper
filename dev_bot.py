@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 
 import requests
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, WebAppInfo
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler, CallbackQueryHandler
 from adapters.notion_adapter import NotionAdapter
 from bot.bot_actions import action_ping, action_reply_factory
@@ -22,7 +22,7 @@ my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 
 def get_mep_quote() -> Optional[float]:
-    response = requests.get("http://escuderokevin.com.ar:7070/api/dolarbolsa")
+    response = requests.get("https://dolarapi.com/v1/dolares/bolsa")
     mep_quote = response.json().get("venta")
     return mep_quote
 
@@ -109,6 +109,7 @@ async def draw_buttons_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if allowed_user(update):
         logging.info(f"Drawing buttons for verified user")
 
+        webapp_url = url = "https://65001e1807d1233bfa244c1a--stirring-capybara-973814.netlify.app/series_chart_d3.html"
         keyboard = [
             [
                 InlineKeyboardButton("GPT-3", callback_data="GPT3"),
@@ -123,6 +124,7 @@ async def draw_buttons_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
             [
                 InlineKeyboardButton("EUR", callback_data="eurusd"),
                 InlineKeyboardButton("EURGBP", callback_data="eurgbp"),
+                InlineKeyboardButton(text="Open Chart", web_app=WebAppInfo(url=webapp_url))
             ],
         ]
 
