@@ -22,15 +22,23 @@ my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 
 def get_mep_quote() -> Optional[float]:
-    response = requests.get("https://dolarapi.com/v1/dolares/bolsa")
-    mep_quote = response.json().get("venta")
-    return mep_quote
+    try:
+        response = requests.get("https://dolarapi.com/v1/dolares/bolsa", timeout=30)
+        response.raise_for_status()
+        mep_quote = response.json().get("venta")
+        return mep_quote
+    except requests.RequestException as e:
+        logging.error(f"Error fetching MEP quote: {e}")
+        return None
 
 
 async def send_mep_message(bot: TelegramBot, chat_ids: List[int]):
     mep_quote = get_mep_quote()
     for chat_id in chat_ids:
-        await bot.send_message(chat_id, f"Dolar MEP: {mep_quote}")
+        if mep_quote is not None:
+            await bot.send_message(chat_id, f"Dolar MEP: {mep_quote}")
+        else:
+            await bot.send_message(chat_id, f"Problem retrieving MEP quote")
 
 
 
