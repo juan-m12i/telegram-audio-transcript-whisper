@@ -12,6 +12,8 @@ from bot.bot_actions import action_ping
 from bot.bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder
 from bot.bot_conditions import first_chars_lower_factory, condition_ping, \
     condition_catch_all
+from pydub import AudioSegment
+import math
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
@@ -48,16 +50,39 @@ reply = reply_builder({
 #  This method will be called each time the bot receives an audio file
 async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
-        my_open_ai.clear_messages()  # TODO improve treatment of message history
-        logging.info(f"Transcribing audio file from verified user")
+        my_open_ai.clear_messages()
         if update.message.audio is not None:
-            audio_file = update.message.audio  # Access the audio file
+            audio_file = update.message.audio
             local_file_path = f"audio_files/{audio_file.file_name}"
+            duration = audio_file.duration  # Duration in seconds
+            file_size = audio_file.file_size  # Size in bytes
         elif update.message.voice is not None:
             audio_file = update.message.voice
             local_file_path = f"audio_files/{audio_file.file_unique_id}.m4a"
+            duration = audio_file.duration
+            file_size = audio_file.file_size
         else:
             raise Exception("No audio message attached in update as audio or voice")
+
+        # Log file details
+        logging.info(f"Processing audio file: {local_file_path}")
+        logging.info(f"Duration: {duration} seconds ({duration/60:.2f} minutes)")
+        logging.info(f"File size: {file_size/1024/1024:.2f} MB")
+
+        # Check limitations
+        if duration > 1800:  # 30 minutes in seconds
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id, 
+                text="⚠️ Audio file exceeds 30 minutes limit. Please send a shorter recording."
+            )
+            return
+
+        if file_size > 25 * 1024 * 1024:  # 25MB in bytes
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id, 
+                text="⚠️ Audio file exceeds 25MB size limit. Please send a smaller file."
+            )
+            return
 
         # Download the audio file
 
@@ -80,6 +105,33 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{response}")
 
         os.remove(local_file_path)
+
+
+def split_audio_file(file_path: str, max_duration_seconds: int = 1700) -> List[str]:
+    """
+    Split an audio file into chunks of max_duration_seconds
+    Returns list of paths to the chunk files
+    """
+    audio = AudioSegment.from_file(file_path)
+    duration_ms = len(audio)
+    chunk_size_ms = max_duration_seconds * 1000  # Convert to milliseconds
+    chunks = []
+    
+    # If file is shorter than max duration, return original
+    if duration_ms <= chunk_size_ms:
+        return [file_path]
+    
+    # Split into chunks
+    number_of_chunks = math.ceil(duration_ms / chunk_size_ms)
+    for i in range(number_of_chunks):
+        start_ms = i * chunk_size_ms
+        end_ms = min((i + 1) * chunk_size_ms, duration_ms)
+        chunk = audio[start_ms:end_ms]
+        chunk_path = f"{file_path}_chunk_{i}.mp3"
+        chunk.export(chunk_path, format="mp3")
+        chunks.append(chunk_path)
+    
+    return chunks
 
 
 def run_whisper_bot():

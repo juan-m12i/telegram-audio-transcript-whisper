@@ -6,3 +6,4 @@ notion-client
 notion
 asyncio
 APScheduler
+pydub
