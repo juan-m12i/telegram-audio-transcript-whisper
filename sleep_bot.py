@@ -14,7 +14,7 @@ import logging
 from datetime import datetime, timedelta
 import httpx
 from typing import Dict, Any, List, Optional
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -27,18 +27,26 @@ from telegram.ext import (
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Bot
 import uuid
 import argparse
+import pytz  # Add timezone support
 
 load_dotenv()
-
-# Configure logging based on command line argument
-log_level = logging.DEBUG if len(sys.argv) > 1 and sys.argv[1].lower() == "debug" else logging.INFO
 
 # Configure root logger to be less verbose
 logging.basicConfig(level=logging.WARNING)  # This will affect third-party loggers
 
 # Configure our app logger
 logger = logging.getLogger("sleep_tracker_bot")
+
+# Add argument parsing
+parser = argparse.ArgumentParser(description='Sleep Tracker Telegram Bot')
+parser.add_argument('--local', action='store_true', help='Use localhost backend')
+parser.add_argument('--debug', action='store_true', help='Enable debug logging')
+args = parser.parse_args()
+
+# Configure logging based on command line argument
+log_level = logging.DEBUG if args.debug else logging.INFO
 logger.setLevel(log_level)
+logger.info(f"Log level set to: {logging.getLevelName(log_level)}")
 
 # Create console handler with formatting
 console_handler = logging.StreamHandler()
@@ -53,20 +61,45 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
-# Add argument parsing
-parser = argparse.ArgumentParser(description='Sleep Tracker Telegram Bot')
-parser.add_argument('--local', action='store_true', help='Use localhost backend')
-args = parser.parse_args()
-
 # Set the backend URL based on argument
-BACKEND_URL = 'http://localhost:8000' if args.local else 'https://sleep-tracker-136994214879.us-central1.run.app'
-logger.info(f"Using backend URL: {BACKEND_URL}")
+BACKEND_URL = 'http://localhost:8080' if args.local else 'https://sleep-tracker-136994214879.us-central1.run.app'
+backend_type = "LOCAL" if args.local else "REMOTE"
+logger.info(f"Using {backend_type} backend at: {BACKEND_URL}")
 
-ALLOWED_CHAT_IDS = [int(id) for id in os.getenv('ALLOWED_CHAT_IDS', '').split(',')]
+# Set timezone
+TIMEZONE = 'America/Argentina/Buenos_Aires'
+timezone = pytz.timezone(TIMEZONE)
+logger.info(f"Using timezone: {TIMEZONE}")
+
+# Load .env file values first
+dot_env_vars = dotenv_values(".env")
+
+# Get environment
+env = os.getenv('ENVIRONMENT', 'dev').lower()
+logger.info(f"Starting bot in {env.upper()} environment")
+
+# Try .env first, then fall back to system environment
+allowed_chat_ids = [
+    int(id) for id in (
+        dot_env_vars.get('ALLOWED_CHAT_IDS') or 
+        os.getenv('ALLOWED_CHAT_IDS', '')
+    ).split(',')
+]
+
+# Get bot token with environment-specific fallback
+bot_token = (
+    dot_env_vars.get(f'TELEGRAM_BOT_TOKEN_{env.upper()}') or
+    dot_env_vars.get('TELEGRAM_BOT_TOKEN') or
+    os.getenv('TELEGRAM_BOT_TOKEN')
+)
+
+if not bot_token:
+    logger.error("TELEGRAM_BOT_TOKEN not found in .env or environment variables")
+    raise ValueError("TELEGRAM_BOT_TOKEN is required")
 
 logger.info(f"Starting bot with log level: {logging.getLevelName(log_level)}")
 logger.debug(f"Backend URL: {BACKEND_URL}")
-logger.debug(f"Allowed chat IDs: {ALLOWED_CHAT_IDS}")
+logger.debug(f"Allowed chat IDs: {allowed_chat_ids}")
 
 # Memory cache for offline operation
 class BotMemoryCache:
@@ -102,28 +135,56 @@ class BotMemoryCache:
 bot_memory = BotMemoryCache()
 
 def is_allowed_user(update: Update) -> bool:
-    chat_id = update.effective_chat.id
-    allowed = chat_id in ALLOWED_CHAT_IDS
-    logger.debug(f"Chat ID {chat_id} allowed: {allowed}")
-    return allowed
+    """Check if the user is allowed to use the bot"""
+    try:
+        # Get chat_id from either callback query or regular message
+        if update.callback_query:
+            chat_id = update.callback_query.message.chat_id
+        elif update.message:
+            chat_id = update.message.chat_id
+        else:
+            logger.error("Could not get chat_id from update")
+            return False
+        
+        allowed = chat_id in allowed_chat_ids
+        logger.debug(f"Chat ID {chat_id} allowed: {allowed}")
+        return allowed
+        
+    except Exception as e:
+        logger.error(f"Error checking user permission: {e}")
+        return False
+
+def get_start_menu_keyboard():
+    """Helper function to create the start menu keyboard"""
+    keyboard = [
+        [
+            InlineKeyboardButton("📝 Check In", callback_data="menu_check"),
+            InlineKeyboardButton("📊 History", callback_data="menu_history")
+        ],
+        [
+            InlineKeyboardButton("🗑️ Delete Last Log", callback_data="menu_delete"),
+            InlineKeyboardButton("🔄 Sync", callback_data="menu_sync")
+        ]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed_user(update):
         return
     
-    welcome_text = (
-        "Welcome to Sleep Tracker! 😴\n\n"
-        "I'll help you track your drowsiness levels throughout the day.\n"
-        "You'll receive reminders in the morning and afternoon.\n\n"
-        "Commands:\n"
-        "/check - Log your current drowsiness level\n"
-        "/note - Add a note to your last entry\n"
-        "/history - View your recent entries\n"
-        "/memory - View current memory state\n"
-        "/sync - Try to sync pending entries with backend\n"
-        "/flush - Clear pending entries from memory"
+    reply_markup = get_start_menu_keyboard()
+    await update.message.reply_text(
+        "Welcome to Sleep Tracker! Choose an option:",
+        reply_markup=reply_markup
     )
-    await update.message.reply_text(welcome_text)
+
+async def show_start_menu(message):
+    """Helper function to show the start menu"""
+    reply_markup = get_start_menu_keyboard()
+    await message.reply_text(
+        "What would you like to do next?",
+        reply_markup=reply_markup
+    )
 
 async def send_rating_keyboard(update: Update, context: ContextTypes.DEFAULT_TYPE, checkin_type: str):
     keyboard = [
@@ -137,7 +198,12 @@ async def send_rating_keyboard(update: Update, context: ContextTypes.DEFAULT_TYP
         ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("How drowsy do you feel right now?", reply_markup=reply_markup)
+    
+    # Handle both Message and CallbackQuery cases
+    if isinstance(update, Update):
+        await update.message.reply_text("How drowsy do you feel right now?", reply_markup=reply_markup)
+    else:  # Message object directly
+        await update.reply_text("How drowsy do you feel right now?", reply_markup=reply_markup)
 
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed_user(update):
@@ -151,6 +217,70 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
     await query.answer()
+    
+    # Handle menu actions
+    if query.data.startswith("menu_"):
+        action = query.data.split("_")[1]
+        if action == "check":
+            await send_rating_keyboard(query.message, context, "on-demand")
+            return
+        elif action == "history":
+            await history(update, context)
+            return
+        elif action == "sync":
+            await sync_command(update, context)
+            return
+        elif action == "delete":
+            # Show delete confirmation
+            keyboard = [
+                [
+                    InlineKeyboardButton("✅ Yes, delete", callback_data="delete_confirm"),
+                    InlineKeyboardButton("❌ No, cancel", callback_data="delete_cancel")
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                "Are you sure you want to delete the last log entry?",
+                reply_markup=reply_markup
+            )
+            return
+    
+    # Handle delete confirmation
+    if query.data.startswith("delete_"):
+        action = query.data.split("_")[1]
+        if action == "confirm":
+            try:
+                async with httpx.AsyncClient() as client:
+                    logger.debug("Attempting to delete last entry")
+                    response = await client.delete(f"{BACKEND_URL}/delete-last-entry")
+                    if response.status_code == 200:
+                        deleted_entry = response.json().get("deleted_entry", {})
+                        timestamp = deleted_entry.get("timestamp", "unknown time")
+                        checkin_type = deleted_entry.get("checkin_type", "unknown type")
+                        rating = deleted_entry.get("rating", "unknown rating")
+                        await query.edit_message_text(
+                            f"✅ Successfully deleted entry:\n"
+                            f"Time: {timestamp}\n"
+                            f"Type: {checkin_type}\n"
+                            f"Rating: {rating}"
+                        )
+                        # Show start menu after successful deletion
+                        await show_start_menu(query.message)
+                    else:
+                        error_detail = response.json().get("detail", "Unknown error")
+                        await query.edit_message_text(f"❌ Failed to delete last entry: {error_detail}")
+                        # Show start menu after error
+                        await show_start_menu(query.message)
+            except Exception as e:
+                logger.error(f"Error deleting last entry: {e}")
+                await query.edit_message_text("❌ Error occurred while deleting entry.")
+                # Show start menu after error
+                await show_start_menu(query.message)
+        else:
+            await query.edit_message_text("Operation cancelled.")
+            # Show start menu after cancellation
+            await show_start_menu(query.message)
+        return
     
     # Handle flush confirmation
     if query.data.startswith("flush_"):
@@ -170,10 +300,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rating = int(data[0])
     checkin_type = data[1]
     
-    # Create entry data
+    # Create entry data with timezone-aware timestamp in Buenos Aires time
     entry = {
         'id': str(uuid.uuid4()),
-        'timestamp': datetime.now().isoformat(),
+        'timestamp': datetime.now(timezone).isoformat(),  # Already in Buenos Aires time
         'checkin_type': checkin_type,
         'rating': rating,
         'notes': None,
@@ -269,22 +399,37 @@ async def add_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logger.error(f"Error adding note: {e}")
             await update.message.reply_text("Error adding note. Please try again.")
 
-async def scheduled_reminder(context: ContextTypes.DEFAULT_TYPE, checkin_type: str):
+async def scheduled_reminder(context: ContextTypes.DEFAULT_TYPE):
+    """Send scheduled reminders to all allowed users"""
+    # Get the checkin type from job data
+    checkin_type = context.job.data
+    
     logger.info(f"Sending {checkin_type} reminders")
-    for chat_id in ALLOWED_CHAT_IDS:
+    for chat_id in allowed_chat_ids:
         try:
             message = await context.bot.send_message(
                 chat_id=chat_id,
                 text=f"Time for your {checkin_type} check-in!"
             )
-            await send_rating_keyboard(message, context, checkin_type)
-            logger.debug(f"Sent reminder to chat {chat_id}")
+            # Create a fake update object to reuse send_rating_keyboard
+            fake_update = Update(0, message)
+            await send_rating_keyboard(fake_update, context, checkin_type)
+            logger.debug(f"Sent {checkin_type} reminder to chat {chat_id}")
         except Exception as e:
-            logger.error(f"Failed to send reminder to {chat_id}: {e}")
+            logger.error(f"Failed to send {checkin_type} reminder to {chat_id}: {e}")
 
 async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not is_allowed_user(update):
-        return
+    # Handle both Update and CallbackQuery objects
+    if hasattr(update, 'callback_query'):
+        if not is_allowed_user(update):
+            return
+        chat_id = update.callback_query.message.chat_id
+        message = update.callback_query.message
+    else:
+        if not is_allowed_user(update):
+            return
+        chat_id = update.effective_chat.id
+        message = update.message
         
     logger.debug("Fetching history")
     
@@ -302,14 +447,19 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         entries = bot_memory.get_combined_history(limit=5)
         
         if not entries:
-            await update.message.reply_text("No entries found.")
+            if hasattr(update, 'callback_query'):
+                await update.callback_query.edit_message_text("No entries found.")
+            else:
+                await message.reply_text("No entries found.")
+            # Show start menu after showing no entries
+            await show_start_menu(message)
             return
             
-        message = "Recent entries:\n\n"
+        message_text = "Recent entries:\n\n"
         for entry in entries:
             # Add a 🔄 indicator for pending entries
             status = "🔄 " if entry in bot_memory.pending_entries else ""
-            message += (
+            message_text += (
                 f"{status}📅 {entry['timestamp']}\n"
                 f"Type: {entry['checkin_type']}\n"
                 f"Rating: {entry['rating']}\n"
@@ -317,29 +467,40 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         
         if bot_memory.pending_entries:
-            message += f"\n🔄 {len(bot_memory.pending_entries)} entries pending sync"
+            message_text += f"\n🔄 {len(bot_memory.pending_entries)} entries pending sync"
             
-        await update.message.reply_text(message)
-        
+        if hasattr(update, 'callback_query'):
+            await update.callback_query.edit_message_text(message_text)
+            # Show start menu in a new message after showing history
+            await show_start_menu(message)
+        else:
+            await message.reply_text(message_text)
+            # Show start menu after showing history
+            await show_start_menu(message)
+            
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
         # If we can't fetch from backend, just show what we have in memory
         entries = bot_memory.get_combined_history(limit=5)
         if not entries:
-            await update.message.reply_text(
-                "⚠️ Backend is unavailable and no entries in local cache."
-            )
+            error_text = "⚠️ Backend is unavailable and no entries in local cache."
         else:
-            message = "⚠️ Backend is unavailable. Showing cached entries:\n\n"
+            error_text = "⚠️ Backend is unavailable. Showing cached entries:\n\n"
             for entry in entries:
                 status = "🔄 " if entry in bot_memory.pending_entries else ""
-                message += (
+                error_text += (
                     f"{status}📅 {entry['timestamp']}\n"
                     f"Type: {entry['checkin_type']}\n"
                     f"Rating: {entry['rating']}\n"
                     f"Notes: {entry['notes'] or 'N/A'}\n\n"
                 )
-            await update.message.reply_text(message)
+        
+        if hasattr(update, 'callback_query'):
+            await update.callback_query.edit_message_text(error_text)
+        else:
+            await message.reply_text(error_text)
+        # Show start menu after error
+        await show_start_menu(message)
 
 async def show_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show the current state of the memory cache"""
@@ -462,17 +623,24 @@ class TelegramBot:
         # Set up job queue for reminders
         job_queue = self.application.job_queue
         
-        # Schedule daily reminders
+        # Schedule daily reminders with timezone
+        morning_time = timezone.localize(datetime.strptime('07:30', '%H:%M')).time()
+        afternoon_time = timezone.localize(datetime.strptime('14:39', '%H:%M')).time()
+        
+        # Schedule reminders with correct data
         job_queue.run_daily(
             scheduled_reminder,
-            time=datetime.strptime('07:00', '%H:%M').time(),
-            data={'type': 'morning'}
+            time=morning_time,
+            data="morning"  # Pass string directly
         )
         job_queue.run_daily(
             scheduled_reminder,
-            time=datetime.strptime('13:00', '%H:%M').time(),
-            data={'type': 'afternoon'}
+            time=afternoon_time,
+            data="afternoon"  # Pass string directly
         )
+        
+        logger.info(f"Scheduled morning reminder for {morning_time}")
+        logger.info(f"Scheduled afternoon reminder for {afternoon_time}")
 
         # Send startup notification and schedule periodic backend checks
         job_queue.run_once(self.send_startup_notification, when=1)
@@ -486,7 +654,7 @@ class TelegramBot:
             status = "🟢 Backend is now available" if is_available else "🔴 Backend is currently unavailable"
             
             # Notify users of status change
-            for chat_id in ALLOWED_CHAT_IDS:
+            for chat_id in allowed_chat_ids:
                 try:
                     await context.bot.send_message(chat_id=chat_id, text=status)
                 except Exception as e:
@@ -511,7 +679,7 @@ class TelegramBot:
                     logger.error(f"Failed to sync entry: {e}")
         
         if not bot_memory.pending_entries:
-            for chat_id in ALLOWED_CHAT_IDS:
+            for chat_id in allowed_chat_ids:
                 try:
                     await context.bot.send_message(
                         chat_id=chat_id,
@@ -532,7 +700,7 @@ class TelegramBot:
             "Use /start to see available commands."
         )
         
-        for chat_id in ALLOWED_CHAT_IDS:
+        for chat_id in allowed_chat_ids:
             try:
                 await context.bot.send_message(chat_id=chat_id, text=startup_message)
                 logger.info(f"Sent startup notification to chat {chat_id}")
@@ -555,7 +723,7 @@ class TelegramBot:
         self.application.run_polling(drop_pending_updates=True)
 
 def main():
-    bot = TelegramBot(os.getenv('TELEGRAM_BOT_TOKEN'))
+    bot = TelegramBot(bot_token)
     bot.run()
 
 if __name__ == "__main__":
