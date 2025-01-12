@@ -31,3 +31,14 @@ services:
     container_name: cont-telegram-dev-bot
     image: img-telegram-dev-bot
     env_file: dev_bot.env
+
+
+  sleep_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: sleep_bot.py
+    container_name: cont-telegram-sleep-bot
+    image: img-telegram-sleep-bot
+    env_file: sleep_bot.env
