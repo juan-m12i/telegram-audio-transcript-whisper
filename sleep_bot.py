@@ -97,6 +97,8 @@ if not bot_token:
     logger.error("TELEGRAM_BOT_TOKEN not found in .env or environment variables")
     raise ValueError("TELEGRAM_BOT_TOKEN is required")
 
+logger.info(f"Bot token: XXXXXXXXX{bot_token[:10]}")
+
 logger.info(f"Starting bot with log level: {logging.getLevelName(log_level)}")
 logger.debug(f"Backend URL: {BACKEND_URL}")
 logger.debug(f"Allowed chat IDs: {allowed_chat_ids}")
