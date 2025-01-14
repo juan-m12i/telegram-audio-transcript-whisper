@@ -72,7 +72,7 @@ timezone = pytz.timezone(TIMEZONE)
 logger.info(f"Using timezone: {TIMEZONE}")
 
 # Load .env file values first
-dot_env_vars = dotenv_values(".env")
+dot_env_vars = dotenv_values("sleep_bot.env")
 
 # Get environment
 env = os.getenv('ENVIRONMENT', 'dev').lower()
