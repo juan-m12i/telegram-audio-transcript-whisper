@@ -11,7 +11,7 @@
 import os
 import sys
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import httpx
 from typing import Dict, Any, List, Optional
 from dotenv import load_dotenv, dotenv_values
@@ -68,8 +68,7 @@ logger.info(f"Using {backend_type} backend at: {BACKEND_URL}")
 
 # Set timezone
 TIMEZONE = os.getenv('TZ', 'America/Argentina/Buenos_Aires')  # Use TZ from .env or default
-timezone = pytz.timezone(TIMEZONE)
-logger.info(f"Using timezone: {TIMEZONE}")
+timezone = pytz.timezone(TIMEZONE)  # Ensure this is using pytz
 
 # Load .env file values first
 dot_env_vars = dotenv_values("sleep_bot.env")
@@ -428,7 +427,15 @@ async def scheduled_reminder(context: ContextTypes.DEFAULT_TYPE):
     # Get the checkin type from job data
     checkin_type = context.job.data
     
+    current_time = datetime.now(timezone)
+    logger.debug(
+        f"Reminder triggered for {checkin_type} at "
+        f"{current_time.strftime('%Y-%m-%d %H:%M:%S %Z')} "
+        f"(UTC: {current_time.astimezone(pytz.UTC).strftime('%H:%M:%S')})"
+    )
+    
     logger.info(f"Sending {checkin_type} reminders")
+    
     for chat_id in allowed_chat_ids:
         try:
             message = await context.bot.send_message(
@@ -653,24 +660,29 @@ class TelegramBot:
         # Set up job queue for reminders
         job_queue = self.application.job_queue
         
-        # Schedule daily reminders with timezone
-        morning_time = timezone.localize(datetime.strptime('06:45', '%H:%M')).time()
-        afternoon_time = timezone.localize(datetime.strptime('14:39', '%H:%M')).time()
+        # Schedule daily reminders using local time
+        morning_time = time(6, 45, tzinfo=timezone)  # Add timezone info
+        afternoon_time = time(13, 30, tzinfo=timezone)  # Add timezone info
         
-        # Schedule reminders with correct data
-        job_queue.run_daily(
+        # Schedule reminders with correct timezone
+        morning_job = job_queue.run_daily(
             scheduled_reminder,
             time=morning_time,
-            data="wake-up"  # Changed from "morning"
+            data="wake-up"
         )
-        job_queue.run_daily(
+        afternoon_job = job_queue.run_daily(
             scheduled_reminder,
             time=afternoon_time,
-            data="afternoon"  # Pass string directly
+            data="afternoon"
         )
         
-        logger.info(f"Scheduled wake-up reminder for {morning_time}")
-        logger.info(f"Scheduled afternoon reminder for {afternoon_time}")
+        # Log the actual scheduled times
+        logger.debug(
+            f"Check-in schedules (timezone: {timezone}):\n"
+            f"- Wake-up check-in at {morning_time}\n"
+            f"- Afternoon check-in at {afternoon_time}\n"
+            f"Current time: {datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        )
 
         # Send startup notification and schedule periodic backend checks
         job_queue.run_once(self.send_startup_notification, when=1)
