@@ -188,41 +188,23 @@ async def show_start_menu(message):
     )
 
 async def send_rating_keyboard(update: Update, context: ContextTypes.DEFAULT_TYPE, checkin_type: str):
-    if checkin_type == "morning":
-        question = "How rested do you feel from last night's sleep?"
-        keyboard = [
-            [
-                InlineKeyboardButton("1 (Not at all rested - I wish I'd slept a lot more)", callback_data=f"1_{checkin_type}"),
-                InlineKeyboardButton("2 (Poorly rested)", callback_data=f"2_{checkin_type}"),
-            ],
-            [
-                InlineKeyboardButton("3 (Somewhat rested)", callback_data=f"3_{checkin_type}"),
-                InlineKeyboardButton("4 (Moderately rested)", callback_data=f"4_{checkin_type}"),
-            ],
-            [
-                InlineKeyboardButton("5 (Mostly rested)", callback_data=f"5_{checkin_type}"),
-                InlineKeyboardButton("6 (Fully rested - I feel great)", callback_data=f"6_{checkin_type}"),
-            ],
-        ]
-    else:  # afternoon and on-demand
-        question = "How rested/energetic do you feel now?"
-        keyboard = [
-            [
-                InlineKeyboardButton("1 (Extremely little - fighting heavy fatigue)", callback_data=f"1_{checkin_type}"),
-                InlineKeyboardButton("2 (Little)", callback_data=f"2_{checkin_type}"),
-            ],
-            [
-                InlineKeyboardButton("3 (Somewhat little)", callback_data=f"3_{checkin_type}"),
-                InlineKeyboardButton("4 (Moderate)", callback_data=f"4_{checkin_type}"),
-            ],
-            [
-                InlineKeyboardButton("5 (A lot)", callback_data=f"5_{checkin_type}"),
-                InlineKeyboardButton("6 (Very much - feeling super energetic)", callback_data=f"6_{checkin_type}"),
-            ],
-        ]
+    question = "How rested/energetic do you feel now?"
+    keyboard = [
+        [
+            InlineKeyboardButton("1 (Exhausted)", callback_data=f"1_{checkin_type}"),
+            InlineKeyboardButton("2 (Quite tired)", callback_data=f"2_{checkin_type}"),
+        ],
+        [
+            InlineKeyboardButton("3 (Somewhat tired)", callback_data=f"3_{checkin_type}"),
+            InlineKeyboardButton("4 (Moderate)", callback_data=f"4_{checkin_type}"),
+        ],
+        [
+            InlineKeyboardButton("5 (Energetic)", callback_data=f"5_{checkin_type}"),
+            InlineKeyboardButton("6 (Very energetic)", callback_data=f"6_{checkin_type}"),
+        ],
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Handle both Message and CallbackQuery cases
     if isinstance(update, Update):
         await update.message.reply_text(question, reply_markup=reply_markup)
     else:  # Message object directly
