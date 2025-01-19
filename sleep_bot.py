@@ -67,7 +67,7 @@ backend_type = "LOCAL" if args.local else "REMOTE"
 logger.info(f"Using {backend_type} backend at: {BACKEND_URL}")
 
 # Set timezone
-TIMEZONE = 'America/Argentina/Buenos_Aires'
+TIMEZONE = os.getenv('TZ', 'America/Argentina/Buenos_Aires')  # Use TZ from .env or default
 timezone = pytz.timezone(TIMEZONE)
 logger.info(f"Using timezone: {TIMEZONE}")
 
@@ -189,23 +189,45 @@ async def show_start_menu(message):
     )
 
 async def send_rating_keyboard(update: Update, context: ContextTypes.DEFAULT_TYPE, checkin_type: str):
-    keyboard = [
-        [
-            InlineKeyboardButton("1 (Very Alert)", callback_data=f"1_{checkin_type}"),
-            InlineKeyboardButton("2 (Alert)", callback_data=f"2_{checkin_type}"),
-        ],
-        [
-            InlineKeyboardButton("3 (Drowsy)", callback_data=f"3_{checkin_type}"),
-            InlineKeyboardButton("4 (Very Drowsy)", callback_data=f"4_{checkin_type}"),
-        ],
-    ]
+    if checkin_type == "morning":
+        question = "How rested do you feel from last night's sleep?"
+        keyboard = [
+            [
+                InlineKeyboardButton("1 (Not at all rested - I wish I'd slept a lot more)", callback_data=f"1_{checkin_type}"),
+                InlineKeyboardButton("2 (Poorly rested)", callback_data=f"2_{checkin_type}"),
+            ],
+            [
+                InlineKeyboardButton("3 (Somewhat rested)", callback_data=f"3_{checkin_type}"),
+                InlineKeyboardButton("4 (Moderately rested)", callback_data=f"4_{checkin_type}"),
+            ],
+            [
+                InlineKeyboardButton("5 (Mostly rested)", callback_data=f"5_{checkin_type}"),
+                InlineKeyboardButton("6 (Fully rested - I feel great)", callback_data=f"6_{checkin_type}"),
+            ],
+        ]
+    else:  # afternoon and on-demand
+        question = "How rested/energetic do you feel now?"
+        keyboard = [
+            [
+                InlineKeyboardButton("1 (Extremely little - fighting heavy fatigue)", callback_data=f"1_{checkin_type}"),
+                InlineKeyboardButton("2 (Little)", callback_data=f"2_{checkin_type}"),
+            ],
+            [
+                InlineKeyboardButton("3 (Somewhat little)", callback_data=f"3_{checkin_type}"),
+                InlineKeyboardButton("4 (Moderate)", callback_data=f"4_{checkin_type}"),
+            ],
+            [
+                InlineKeyboardButton("5 (A lot)", callback_data=f"5_{checkin_type}"),
+                InlineKeyboardButton("6 (Very much - feeling super energetic)", callback_data=f"6_{checkin_type}"),
+            ],
+        ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     # Handle both Message and CallbackQuery cases
     if isinstance(update, Update):
-        await update.message.reply_text("How drowsy do you feel right now?", reply_markup=reply_markup)
+        await update.message.reply_text(question, reply_markup=reply_markup)
     else:  # Message object directly
-        await update.reply_text("How drowsy do you feel right now?", reply_markup=reply_markup)
+        await update.reply_text(question, reply_markup=reply_markup)
 
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_allowed_user(update):
@@ -626,14 +648,14 @@ class TelegramBot:
         job_queue = self.application.job_queue
         
         # Schedule daily reminders with timezone
-        morning_time = timezone.localize(datetime.strptime('07:30', '%H:%M')).time()
+        morning_time = timezone.localize(datetime.strptime('06:45', '%H:%M')).time()
         afternoon_time = timezone.localize(datetime.strptime('14:39', '%H:%M')).time()
         
         # Schedule reminders with correct data
         job_queue.run_daily(
             scheduled_reminder,
             time=morning_time,
-            data="morning"  # Pass string directly
+            data="wake-up"  # Changed from "morning"
         )
         job_queue.run_daily(
             scheduled_reminder,
@@ -641,7 +663,7 @@ class TelegramBot:
             data="afternoon"  # Pass string directly
         )
         
-        logger.info(f"Scheduled morning reminder for {morning_time}")
+        logger.info(f"Scheduled wake-up reminder for {morning_time}")
         logger.info(f"Scheduled afternoon reminder for {afternoon_time}")
 
         # Send startup notification and schedule periodic backend checks
