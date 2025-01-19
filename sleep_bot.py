@@ -630,6 +630,11 @@ async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"Remaining pending entries: {len(bot_memory.pending_entries)}"
             )
 
+async def time_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Respond with the current local time of the bot."""
+    current_time = datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S')
+    await update.message.reply_text(f"The current local time is: {current_time}")
+
 class TelegramBot:
     def __init__(self, token: str):
         self.application = Application.builder().token(token).build()
@@ -639,6 +644,7 @@ class TelegramBot:
         self.application.add_handler(CommandHandler('check', check_command))
         self.application.add_handler(CommandHandler('history', history))
         self.application.add_handler(CommandHandler('note', add_note))
+        self.application.add_handler(CommandHandler('time', time_command))
         self.application.add_handler(CallbackQueryHandler(button_callback))
         self.application.add_handler(CommandHandler('memory', show_memory))
         self.application.add_handler(CommandHandler('sync', sync_command))
