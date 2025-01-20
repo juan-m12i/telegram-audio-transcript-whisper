@@ -107,7 +107,6 @@ class BotMemoryCache:
     def __init__(self):
         self.pending_entries: List[Dict[str, Any]] = []
         self.last_known_entries: List[Dict[str, Any]] = []
-        self.is_backend_available: bool = False
     
     def add_pending_entry(self, entry: Dict[str, Any]):
         """Add an entry to pending when backend is unavailable"""
@@ -319,16 +318,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['last_entry_id'] = entry['id']
     
     try:
-        if bot_memory.is_backend_available:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(f"{BACKEND_URL}/submit", json=entry)
-                if response.status_code != 200:
-                    raise Exception(f"Backend error: {response.status_code}")
-                logger.debug("Entry submitted to backend successfully")
-        else:
-            # Store in memory if backend is unavailable
-            bot_memory.add_pending_entry(entry)
-            logger.debug("Entry stored in memory cache")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"{BACKEND_URL}/submit", json=entry)
+            if response.status_code != 200:
+                raise Exception(f"Backend error: {response.status_code}")
+            logger.debug("Entry submitted to backend successfully")
         
         await query.edit_message_text(
             f"Recorded {checkin_type} drowsiness level: {rating}\n"
@@ -447,14 +441,13 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.debug("Fetching history")
     
     try:
-        if bot_memory.is_backend_available:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{BACKEND_URL}/history?limit=5")
-                if response.status_code == 200:
-                    entries = response.json()
-                    bot_memory.update_last_known_entries(entries)
-                else:
-                    raise Exception(f"Backend error: {response.status_code}")
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{BACKEND_URL}/history?limit=5")
+            if response.status_code == 200:
+                entries = response.json()
+                bot_memory.update_last_known_entries(entries)
+            else:
+                raise Exception(f"Backend error: {response.status_code}")
         
         # Get combined history from memory
         entries = bot_memory.get_combined_history(limit=5)
@@ -643,10 +636,9 @@ class TelegramBot:
         job_queue = self.application.job_queue
         
         # Schedule daily reminders using local time
-        morning_time = time(6, 45, tzinfo=timezone)  # Add timezone info
-        afternoon_time = time(13, 30, tzinfo=timezone)  # Add timezone info
+        morning_time = time(6, 45, tzinfo=timezone)
+        afternoon_time = time(13, 30, tzinfo=timezone)
         
-        # Schedule reminders with correct timezone
         morning_job = job_queue.run_daily(
             scheduled_reminder,
             time=morning_time,
@@ -666,61 +658,13 @@ class TelegramBot:
             f"Current time: {datetime.now(timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}"
         )
 
-        # Send startup notification and schedule periodic backend checks
+        # Only send startup notification
         job_queue.run_once(self.send_startup_notification, when=1)
-        job_queue.run_repeating(self.check_backend_health, interval=60, first=10)
-
-    async def check_backend_health(self, context: ContextTypes.DEFAULT_TYPE):
-        """Periodically check backend health and try to sync pending entries"""
-        is_available = await self.check_backend()
-        if is_available != bot_memory.is_backend_available:
-            bot_memory.is_backend_available = is_available
-            status = "🟢 Backend is now available" if is_available else "🔴 Backend is currently unavailable"
-            
-            # Notify users of status change
-            for chat_id in allowed_chat_ids:
-                try:
-                    await context.bot.send_message(chat_id=chat_id, text=status)
-                except Exception as e:
-                    logger.error(f"Failed to send status update to {chat_id}: {e}")
-            
-            # If backend is back online, try to sync pending entries
-            if is_available and bot_memory.pending_entries:
-                await self.sync_pending_entries(context)
-
-    async def sync_pending_entries(self, context: ContextTypes.DEFAULT_TYPE):
-        """Try to sync pending entries when backend becomes available"""
-        logger.info(f"Attempting to sync {len(bot_memory.pending_entries)} pending entries")
-        
-        async with httpx.AsyncClient() as client:
-            for entry in bot_memory.pending_entries[:]:  # Create a copy to iterate
-                try:
-                    response = await client.post(f"{BACKEND_URL}/submit", json=entry)
-                    if response.status_code == 200:
-                        bot_memory.pending_entries.remove(entry)
-                        logger.debug(f"Successfully synced entry from {entry['timestamp']}")
-                except Exception as e:
-                    logger.error(f"Failed to sync entry: {e}")
-        
-        if not bot_memory.pending_entries:
-            for chat_id in allowed_chat_ids:
-                try:
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text="✅ All pending entries have been synced to the backend!"
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send sync completion message to {chat_id}: {e}")
 
     async def send_startup_notification(self, context: ContextTypes.DEFAULT_TYPE):
         """Send startup notifications to all allowed users"""
-        # Check backend first
-        backend_ok = await self.check_backend()
-        status_msg = "✅ Backend is accessible" if backend_ok else "⚠️ Backend is not accessible"
-        
         startup_message = (
             "🤖 Sleep Tracker Bot is now online!\n"
-            f"{status_msg}\n"
             "Use /start to see available commands."
         )
         
@@ -730,16 +674,6 @@ class TelegramBot:
                 logger.info(f"Sent startup notification to chat {chat_id}")
             except Exception as e:
                 logger.error(f"Failed to send startup notification to {chat_id}: {e}")
-
-    async def check_backend(self) -> bool:
-        """Check if backend is accessible"""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{BACKEND_URL}/history?limit=1")
-                return response.status_code == 200
-        except Exception as e:
-            logger.error(f"Backend check failed: {e}")
-            return False
 
     def run(self):
         """Start the bot"""
