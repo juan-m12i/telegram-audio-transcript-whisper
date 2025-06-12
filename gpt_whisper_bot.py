@@ -50,6 +50,11 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
         my_open_ai.clear_messages()  # TODO improve treatment of message history
         logging.info(f"Transcribing audio file from verified user")
+        # Acknowledge the audio message so the user knows we're working on it
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Audio received, starting transcription...",
+        )
         if update.message.audio is not None:
             audio_file = update.message.audio  # Access the audio file
             local_file_path = f"audio_files/{audio_file.file_name}"
@@ -63,12 +68,6 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         file = await context.bot.get_file(file_id=audio_file.file_id)
         await file.download_to_drive(local_file_path)  #
-
-        # Inform the user that transcription is starting
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Starting transcription..."
-        )
 
         # Send the audio file to the OpenAI API endpoint
         try:
