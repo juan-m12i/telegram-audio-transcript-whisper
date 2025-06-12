@@ -26,6 +26,11 @@ def transcribe_audio_file(local_file_path: str) -> List[str]:
     logging.info("Whisper API status: %s", response.status_code)
     if response.status_code != 200:
         logging.error("Whisper API error: %s", response.text)
+        try:
+            error_msg = response.json().get("error", {}).get("message", "")
+        except Exception:
+            error_msg = response.text
+        raise RuntimeError(f"Whisper API error {response.status_code}: {error_msg}")
     try:
         response_text = response.json().get("text")
     except Exception:  # JSON decoding failed

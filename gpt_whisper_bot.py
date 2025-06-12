@@ -65,7 +65,12 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive(local_file_path)  #
 
         # Send the audio file to the OpenAI API endpoint
-        messages: List[str] = transcribe_audio_file(local_file_path)
+        try:
+            messages: List[str] = transcribe_audio_file(local_file_path)
+        except Exception as exc:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=str(exc))
+            os.remove(local_file_path)
+            return
 
         # Send each message as a separate message
         for message in messages:
