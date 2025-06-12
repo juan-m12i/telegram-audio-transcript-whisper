@@ -89,7 +89,9 @@ class TelegramBot:
         self.handlers: List = handlers
         self.bot = Bot(token)
         self.application = build_bot(token)
-        self.scheduler = AsyncIOScheduler()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+        self.scheduler = AsyncIOScheduler(event_loop=self.loop)
 
     def add_handler(self, handler):
         self.handlers.append(handler)
@@ -111,11 +113,10 @@ class TelegramBot:
                        f" {os.environ.get('THIS_MACHINE')}"
         logging.info(init_message)
 
-        loop = asyncio.get_event_loop()
         for chat_id in chat_ids_report:
-            loop.run_until_complete(send_startup_message(self.token, chat_id,
-                                                         f"Running {bots_lookup.get(bot_token_fingerprint)} on "
-                                                         f"{os.environ.get('THIS_MACHINE')}"))
+            self.loop.run_until_complete(send_startup_message(self.token, chat_id,
+                                                             f"Running {bots_lookup.get(bot_token_fingerprint)} on "
+                                                             f"{os.environ.get('THIS_MACHINE')}"))
 
         self.scheduler.start()
         self.application.run_polling()
