@@ -3,3 +3,4 @@ Added acknowledgment message before transcription
 Fixed malformed summary prompt in gpt_whisper_bot
 Added architecture review
 Implemented async http calls, shared config, added tests.
+Fixed scheduler initialization with event loop
