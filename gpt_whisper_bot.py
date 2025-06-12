@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 from typing import List
 
 from dotenv import load_dotenv
@@ -64,8 +65,29 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         file = await context.bot.get_file(file_id=audio_file.file_id)
         await file.download_to_drive(local_file_path)  #
 
-        # Send the audio file to the OpenAI API endpoint
-        messages: List[str] = transcribe_audio_file(local_file_path)
+        # Inform the user that transcription is starting
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Starting transcription..."
+        )
+
+        # Send the audio file to the OpenAI API endpoint in a thread
+        try:
+            messages: List[str] = await asyncio.to_thread(
+                transcribe_audio_file, local_file_path
+            )
+        except Exception as exc:
+            error_text = str(exc)
+            if "quota" in error_text.lower():
+                error_text = (
+                    "OpenAI quota exceeded. Please check your plan and billing details."
+                )
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=error_text,
+            )
+            os.remove(local_file_path)
+            return
 
         # Send each message as a separate message
         for message in messages:
