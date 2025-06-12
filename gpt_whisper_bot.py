@@ -82,11 +82,14 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
         single_message: str = " ".join(messages)
-        response: str = my_open_ai.answer_message(
-            f'Please summarise the following message, keep the original language (if the text is in Spanish, '
-            f'perform the summary in Spanish),'
-            f'which will likely be spanish or english:"{single_message}" \n Your '
-            f'answer should start with "SUMMARY:\n" (in the original language, so it would be "RESUMEN: for Spanish')
+        summary_prompt = (
+            "Please summarise the following message, keep the original language "
+            "(if the text is in Spanish, perform the summary in Spanish). "
+            f'It will likely be Spanish or English: "{single_message}"\n'
+            'Your answer should start with "SUMMARY:" '
+            '(use "RESUMEN:" if the language is Spanish).'
+        )
+        response: str = my_open_ai.answer_message(summary_prompt)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{response}")
 
         os.remove(local_file_path)
