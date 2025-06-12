@@ -6,3 +6,5 @@ notion-client
 notion
 asyncio
 APScheduler
+httpx
+pytest

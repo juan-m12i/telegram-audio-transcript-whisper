@@ -2,14 +2,14 @@ import os
 import re
 import logging
 from typing import List
-import requests
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
 # TODO convert to class
-def transcribe_audio_file(local_file_path: str) -> List[str]:
+async def transcribe_audio_file(local_file_path: str) -> List[str]:
     # Send the audio file to the OpenAI API endpoint
     openai_api_key = os.getenv("OPEN_AI_API_KEY")
     headers = {
@@ -18,10 +18,11 @@ def transcribe_audio_file(local_file_path: str) -> List[str]:
     url = "https://api.openai.com/v1/audio/transcriptions"
     model = "whisper-1"
 
-    with open(local_file_path, "rb") as audio_data:
-        files = {"file": (local_file_path, audio_data)}
-        data = {"model": model, "response_format": "json"}
-        response = requests.post(url, headers=headers, data=data, files=files)
+    async with httpx.AsyncClient() as client:
+        with open(local_file_path, "rb") as audio_data:
+            files = {"file": (local_file_path, audio_data)}
+            data = {"model": model, "response_format": "json"}
+            response = await client.post(url, headers=headers, data=data, files=files)
 
     logging.info("Whisper API status: %s", response.status_code)
     if response.status_code != 200:
@@ -60,3 +61,4 @@ def transcribe_audio_file(local_file_path: str) -> List[str]:
 
     # Send each message as a separate message
     return messages
+

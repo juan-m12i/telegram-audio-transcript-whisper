@@ -1,7 +1,7 @@
 import os
 import logging
 from typing import List
-from dotenv import load_dotenv
+from config import setup
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 from adapters.notion_adapter import NotionAdapter
@@ -9,7 +9,7 @@ from bot.bot_actions import action_ping, action_reply_factory
 from bot.bot_common import bot_start, run_telegram_bot, reply_builder
 from bot.bot_conditions import condition_ping, condition_catch_all
 
-load_dotenv()  # Python module to load environment variables from a .env file
+setup()
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(
     ',')]  # Pythonic way of creating a list, behaves like a loop
