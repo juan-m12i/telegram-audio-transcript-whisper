@@ -5,20 +5,14 @@ from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 import asyncio
 #from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from dotenv import load_dotenv
+from config import setup
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
 
 from bot.bot_lookup import bots_lookup
 from bot.bot_types import ReplyAction, Condition
 
-load_dotenv()  # Python module to load environment variables from a .env file
-
-# Configure logging (native python library)
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+setup()
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 chat_ids_report: List[int] = [int(chat_id) for chat_id in os.getenv('STARTUP_CHAT_IDS_REPORT').split(',')]

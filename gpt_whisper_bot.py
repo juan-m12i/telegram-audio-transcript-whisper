@@ -2,7 +2,7 @@ import logging
 import os
 from typing import List
 
-from dotenv import load_dotenv
+from config import setup
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ContextTypes, CommandHandler
 
@@ -13,7 +13,7 @@ from bot.bot_common import allowed_user, bot_start, run_telegram_bot, reply_buil
 from bot.bot_conditions import first_chars_lower_factory, condition_ping, \
     condition_catch_all
 
-load_dotenv()  # Python module to load environment variables from a .env file
+setup()
 
 my_open_ai = OpenAI()  # OpenAI is a custom class that works as a wrapper/adapter for OpenAI's GPT API
 
@@ -71,7 +71,7 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Send the audio file to the OpenAI API endpoint
         try:
-            messages: List[str] = transcribe_audio_file(local_file_path)
+            messages: List[str] = await transcribe_audio_file(local_file_path)
         except Exception as exc:
             await context.bot.send_message(chat_id=update.effective_chat.id, text=str(exc))
             os.remove(local_file_path)
