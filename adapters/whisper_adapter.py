@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from typing import List
 import requests
 from dotenv import load_dotenv
@@ -19,10 +20,26 @@ def transcribe_audio_file(local_file_path: str) -> List[str]:
 
     with open(local_file_path, "rb") as audio_data:
         files = {"file": (local_file_path, audio_data)}
-        data = {"model": model}
+        data = {"model": model, "response_format": "json"}
         response = requests.post(url, headers=headers, data=data, files=files)
 
-    response_text = response.json()["text"]
+    logging.info("Whisper API status: %s", response.status_code)
+    if response.status_code != 200:
+        logging.error("Whisper API error: %s", response.text)
+        try:
+            error_msg = response.json().get("error", {}).get("message", "")
+        except Exception:
+            error_msg = response.text
+        raise RuntimeError(f"Whisper API error {response.status_code}: {error_msg}")
+    try:
+        response_text = response.json().get("text")
+    except Exception:  # JSON decoding failed
+        logging.exception("Failed to decode Whisper response: %s", response.text)
+        raise
+
+    if response_text is None:
+        logging.error("Unexpected Whisper response payload: %s", response.text)
+        raise ValueError("No transcription text returned")
 
     # Split the response text into sentences using a regular expression
     sentences = re.split("(?<=[.!?]) +", response_text)

@@ -50,6 +50,11 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if allowed_user(update):
         my_open_ai.clear_messages()  # TODO improve treatment of message history
         logging.info(f"Transcribing audio file from verified user")
+        # Acknowledge the audio message so the user knows we're working on it
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Audio received, starting transcription...",
+        )
         if update.message.audio is not None:
             audio_file = update.message.audio  # Access the audio file
             local_file_path = f"audio_files/{audio_file.file_name}"
@@ -65,18 +70,26 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file.download_to_drive(local_file_path)  #
 
         # Send the audio file to the OpenAI API endpoint
-        messages: List[str] = transcribe_audio_file(local_file_path)
+        try:
+            messages: List[str] = transcribe_audio_file(local_file_path)
+        except Exception as exc:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=str(exc))
+            os.remove(local_file_path)
+            return
 
         # Send each message as a separate message
         for message in messages:
             await context.bot.send_message(chat_id=update.effective_chat.id, text=message)
 
         single_message: str = " ".join(messages)
-        response: str = my_open_ai.answer_message(
-            f'Please summarise the following message, keep the original language (if the text is in Spanish, '
-            f'perform the summary in Spanish),'
-            f'which will likely be spanish or english:"{single_message}" \n Your '
-            f'answer should start with "SUMMARY:\n" (in the original language, so it would be "RESUMEN: for Spanish')
+        summary_prompt = (
+            "Please summarise the following message, keep the original language "
+            "(if the text is in Spanish, perform the summary in Spanish). "
+            f'It will likely be Spanish or English: "{single_message}"\n'
+            'Your answer should start with "SUMMARY:" '
+            '(use "RESUMEN:" if the language is Spanish).'
+        )
+        response: str = my_open_ai.answer_message(summary_prompt)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f"{response}")
 
         os.remove(local_file_path)
