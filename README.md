@@ -6,6 +6,7 @@ This Telegram bot is designed to interact with users by providing GPT-3 generate
 
 * GPT-3 integration for generating text responses
 * Audio transcription using OpenAI Whisper API
+* **NEW**: Notion integration for storing transcriptions and summaries with metadata
 * Restricted access to specific chat IDs
 
 ## Setup
@@ -22,7 +23,39 @@ pip install -r requirements.txt
 TELEGRAM_BOT_TOKEN=<your_telegram_bot_token>
 OPEN_AI_API_KEY=<your_openai_api_key>
 ALLOWED_CHAT_IDS=<comma_separated_list_of_allowed_chat_ids>
+
+# Notion Integration (Optional)
+NOTION_TOKEN=<your_notion_integration_token>
+NOTION_TRANSCRIPT_PAGE_ID=<notion_page_id_for_transcripts>
+NOTION_SUMMARY_PAGE_ID=<notion_page_id_for_summaries>
 ```
+
+### Notion Integration Setup
+
+To enable automatic storage of transcriptions and summaries in Notion:
+
+1. **Create a Notion Integration:**
+   - Go to [Notion Developers](https://developers.notion.com/)
+   - Create a new integration and copy the token
+   - Set `NOTION_TOKEN` in your `.env` file
+
+2. **Create Notion Pages:**
+   - Create two separate pages in Notion (one for transcripts, one for summaries)
+   - Share both pages with your integration
+   - Copy the page IDs from the URLs and set:
+     - `NOTION_TRANSCRIPT_PAGE_ID` for storing full transcriptions with metadata
+     - `NOTION_SUMMARY_PAGE_ID` for storing summaries with metadata
+
+3. **Stored Metadata:**
+   - Timestamp of processing
+   - Audio duration (in seconds)
+   - File size (in bytes)
+   - File name
+   - MIME type
+   - Audio type (audio vs voice message)
+   - For audio files: performer and title (if available)
+
+**Note:** If Notion environment variables are not configured, the bot will continue to work normally but won't store data in Notion. Notion storage errors won't affect the main transcription functionality.
 
 3. Run the script:
 
