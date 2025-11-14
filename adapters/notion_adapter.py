@@ -15,16 +15,18 @@ class NotionAdapter:
     from datetime import datetime
 
     def add_block(self, parent_id: str, text: str, date: datetime = None, attachment_url: str = None,
-                  block_type: str = "paragraph"):
-        if date is None:
-            date = datetime.now()
-
+                  block_type: str = "paragraph", prepend_timestamp: bool = True):
         if block_type not in ["paragraph", "bulleted_list_item"]:
             raise ValueError("Invalid block_type. Must be 'paragraph' or 'bulleted_list_item'.")
 
-        # Format timestamp and prepend to text content
-        timestamp_str = date.strftime('%Y-%m-%d %H:%M:%S')
-        formatted_text = f"[{timestamp_str}] {text}"
+        # Format timestamp and prepend to text content if requested
+        if prepend_timestamp:
+            if date is None:
+                date = datetime.now()
+            timestamp_str = date.strftime('%Y-%m-%d %H:%M:%S')
+            formatted_text = f"[{timestamp_str}] {text}"
+        else:
+            formatted_text = text
 
         block_dict = {
             "object": "block",
