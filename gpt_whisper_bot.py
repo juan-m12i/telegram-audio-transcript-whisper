@@ -161,7 +161,8 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 my_notion.add_block(
                     parent_id=transcript_page_id,
                     text=transcript_content,
-                    block_type="paragraph"
+                    block_type="paragraph",
+                    date=timestamp
                 )
                 logging.info("✅ Transcript successfully stored in Notion")
             else:
@@ -197,7 +198,8 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 my_notion.add_block(
                     parent_id=summary_page_id,
                     text=summary_content,
-                    block_type="paragraph"
+                    block_type="paragraph",
+                    date=timestamp
                 )
                 logging.info("✅ Summary successfully stored in Notion")
             else:

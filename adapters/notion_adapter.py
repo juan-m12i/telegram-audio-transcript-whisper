@@ -22,6 +22,10 @@ class NotionAdapter:
         if block_type not in ["paragraph", "bulleted_list_item"]:
             raise ValueError("Invalid block_type. Must be 'paragraph' or 'bulleted_list_item'.")
 
+        # Format timestamp and prepend to text content
+        timestamp_str = date.strftime('%Y-%m-%d %H:%M:%S')
+        formatted_text = f"[{timestamp_str}] {text}"
+
         block_dict = {
             "object": "block",
             "type": block_type,
@@ -33,7 +37,7 @@ class NotionAdapter:
                     {
                         "type": "text",
                         "text": {
-                            "content": text
+                            "content": formatted_text
                         }
                     }
                 ]
@@ -44,7 +48,7 @@ class NotionAdapter:
                     {
                         "type": "text",
                         "text": {
-                            "content": text
+                            "content": formatted_text
                         }
                     }
                 ],
