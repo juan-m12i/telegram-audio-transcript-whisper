@@ -11,7 +11,7 @@ from adapters.gpt_adapter import OpenAI
 from adapters.notion_adapter import NotionAdapter
 from adapters.whisper_adapter import transcribe_audio_file
 from bot.bot_actions import action_ping
-from bot.bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder
+from bot.bot_common import allowed_user, bot_start, run_telegram_bot, reply_builder, get_local_datetime
 from bot.bot_conditions import first_chars_lower_factory, condition_ping, \
     condition_catch_all
 
@@ -24,12 +24,30 @@ condition_gpt4 = first_chars_lower_factory(4, 'gpt4')
 condition_gpt = first_chars_lower_factory(3, 'gpt')
 
 
+def _get_timezone():
+    """Get configured timezone."""
+    # Import here to avoid circular dependency
+    from bot.bot_common import _get_timezone as _get_tz
+    return _get_tz()
+
+
 def _format_transcript_for_notion(transcript: str, metadata: dict, timestamp: datetime) -> str:
     """Format transcript with metadata for Notion storage."""
     duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') is not None else "Unknown"
     file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') is not None else "Unknown"
     
-    content = f"🎵 Audio Transcription - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    # Format timestamp in configured timezone
+    tz = _get_timezone()
+    if timestamp.tzinfo is None:
+        # If naive datetime, assume it's already in configured timezone
+        formatted_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        # Convert to configured timezone if needed
+        if timestamp.tzinfo != tz:
+            timestamp = timestamp.astimezone(tz)
+        formatted_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    
+    content = f"🎵 Audio Transcription - {formatted_time}\n\n"
     content += f"📊 Metadata:\n"
     content += f"• Type: {metadata.get('audio_type', 'Unknown')}\n"
     content += f"• Duration: {duration_str}\n"
@@ -53,7 +71,18 @@ def _format_summary_for_notion(summary: str, metadata: dict, timestamp: datetime
     duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') is not None else "Unknown"
     file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') is not None else "Unknown"
     
-    content = f"📋 Audio Summary - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    # Format timestamp in configured timezone
+    tz = _get_timezone()
+    if timestamp.tzinfo is None:
+        # If naive datetime, assume it's already in configured timezone
+        formatted_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        # Convert to configured timezone if needed
+        if timestamp.tzinfo != tz:
+            timestamp = timestamp.astimezone(tz)
+        formatted_time = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    
+    content = f"📋 Audio Summary - {formatted_time}\n\n"
     content += f"📊 Metadata:\n"
     content += f"• Type: {metadata.get('audio_type', 'Unknown')}\n"
     content += f"• Duration: {duration_str}\n"
@@ -108,17 +137,37 @@ def _chunk_text_for_notion(text: str, max_chunk_size: int = 1900) -> List[str]:
                     # If sentence is still too long, split by words
                     words = sentence.split(' ')
                     for word in words:
+                        # Handle oversized words by truncating (should be rare)
+                        if len(word) > max_chunk_size:
+                            if current_chunk:
+                                chunks.append(current_chunk)
+                                current_chunk = ""
+                            # Split oversized word into chunks
+                            for j in range(0, len(word), max_chunk_size):
+                                word_chunk = word[j:j + max_chunk_size]
+                                chunks.append(word_chunk)
+                            continue
+                        
                         if current_chunk and len(current_chunk) + len(word) + 1 > max_chunk_size:
                             chunks.append(current_chunk)
                             current_chunk = word
                         else:
                             current_chunk += (' ' + word if current_chunk else word)
                 else:
-                    if current_chunk and len(current_chunk) + len(sentence) + 1 > max_chunk_size:
+                    # Handle oversized sentences (shouldn't happen after sentence split, but be safe)
+                    if len(sentence) > max_chunk_size:
+                        if current_chunk:
+                            chunks.append(current_chunk)
+                            current_chunk = ""
+                        # Split oversized sentence into chunks
+                        for j in range(0, len(sentence), max_chunk_size):
+                            sentence_chunk = sentence[j:j + max_chunk_size]
+                            chunks.append(sentence_chunk)
+                    elif current_chunk and len(current_chunk) + len(sentence) + 1 > max_chunk_size:
                         chunks.append(current_chunk)
                         current_chunk = sentence
                     else:
-                        current_chunk += ('\n' + sentence if current_chunk else sentence)
+                        current_chunk += (' ' + sentence if current_chunk else sentence)
         else:
             current_chunk += ('\n' + paragraph if current_chunk else paragraph)
     
@@ -160,7 +209,7 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.info(f"Transcribing audio file from verified user")
         
         # Collect metadata from audio message
-        timestamp = datetime.now()
+        timestamp = get_local_datetime()  # Use configured timezone (default: Argentina)
         audio_metadata = {}
         
         # Acknowledge the audio message so the user knows we're working on it

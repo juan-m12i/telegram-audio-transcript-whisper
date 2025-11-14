@@ -1,6 +1,19 @@
 import os
 import logging
 from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
+from datetime import datetime
+
+# Try to use zoneinfo (Python 3.9+), fallback to pytz if needed
+try:
+    from zoneinfo import ZoneInfo
+    USE_ZONEINFO = True
+except ImportError:
+    # Fallback for Python < 3.9
+    try:
+        import pytz
+        USE_ZONEINFO = False
+    except ImportError:
+        raise ImportError("Either zoneinfo (Python 3.9+) or pytz is required for timezone support")
 
 import asyncio
 #from apscheduler.schedulers.background import BackgroundScheduler
@@ -22,6 +35,52 @@ logging.basicConfig(
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 chat_ids_report: List[int] = [int(chat_id) for chat_id in os.getenv('STARTUP_CHAT_IDS_REPORT').split(',')]
+
+# Default timezone: Argentina (GMT-3)
+# Can be overridden via TIMEZONE environment variable (e.g., "America/Argentina/Buenos_Aires", "America/New_York", etc.)
+DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires"
+TIMEZONE_NAME = os.getenv('TIMEZONE', DEFAULT_TIMEZONE)
+
+
+def _get_timezone(timezone_name: str = None):
+    """Get timezone object for the specified timezone name.
+    
+    Args:
+        timezone_name: Timezone name (e.g., "America/Argentina/Buenos_Aires"). 
+                      If None, uses TIMEZONE env var or DEFAULT_TIMEZONE.
+    
+    Returns:
+        Timezone object (ZoneInfo or pytz timezone)
+    """
+    if timezone_name is None:
+        timezone_name = TIMEZONE_NAME
+    
+    if USE_ZONEINFO:
+        # Python 3.9+ with zoneinfo
+        return ZoneInfo(timezone_name)
+    else:
+        # Fallback to pytz
+        import pytz
+        return pytz.timezone(timezone_name)
+
+
+def get_local_datetime(timezone_name: str = None) -> datetime:
+    """Get current datetime in the configured timezone.
+    
+    Args:
+        timezone_name: Optional timezone name override. If None, uses TIMEZONE env var or DEFAULT_TIMEZONE.
+    
+    Returns:
+        datetime: Current datetime in the specified timezone
+    """
+    tz = _get_timezone(timezone_name)
+    if USE_ZONEINFO:
+        # zoneinfo returns timezone-aware datetime
+        return datetime.now(tz)
+    else:
+        # pytz requires localize
+        import pytz
+        return pytz.UTC.localize(datetime.utcnow()).astimezone(tz)
 
 
 def allowed_user(update: Update) -> bool:
