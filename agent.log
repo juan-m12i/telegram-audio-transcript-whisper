@@ -4,3 +4,4 @@ Fixed malformed summary prompt in gpt_whisper_bot
 Added architecture review
 Implemented timestamp storage in Notion logs for notes, transcripts, and summaries
 Pinned dependency versions (including pytz) to stabilize docker bots
+Fixed PR review issues: removed double timestamps, fixed zero value handling, added chunking for long transcripts/summaries
