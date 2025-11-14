@@ -26,8 +26,8 @@ condition_gpt = first_chars_lower_factory(3, 'gpt')
 
 def _format_transcript_for_notion(transcript: str, metadata: dict, timestamp: datetime) -> str:
     """Format transcript with metadata for Notion storage."""
-    duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') else "Unknown"
-    file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') else "Unknown"
+    duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') is not None else "Unknown"
+    file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') is not None else "Unknown"
     
     content = f"🎵 Audio Transcription - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     content += f"📊 Metadata:\n"
@@ -50,8 +50,8 @@ def _format_transcript_for_notion(transcript: str, metadata: dict, timestamp: da
 
 def _format_summary_for_notion(summary: str, metadata: dict, timestamp: datetime) -> str:
     """Format summary with metadata for Notion storage."""
-    duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') else "Unknown"
-    file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') else "Unknown"
+    duration_str = f"{metadata.get('duration', 'Unknown')}s" if metadata.get('duration') is not None else "Unknown"
+    file_size_str = f"{metadata.get('file_size', 'Unknown')} bytes" if metadata.get('file_size') is not None else "Unknown"
     
     content = f"📋 Audio Summary - {timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     content += f"📊 Metadata:\n"
@@ -64,6 +64,69 @@ def _format_summary_for_notion(summary: str, metadata: dict, timestamp: datetime
     
     content += f"\n📄 Summary:\n{summary}"
     return content
+
+
+def _chunk_text_for_notion(text: str, max_chunk_size: int = 1900) -> List[str]:
+    """Split text into chunks that fit within Notion's ~2000 character limit per block.
+    
+    Args:
+        text: The text to chunk
+        max_chunk_size: Maximum characters per chunk (default 1900 to leave margin)
+    
+    Returns:
+        List of text chunks
+    """
+    if len(text) <= max_chunk_size:
+        return [text]
+    
+    chunks = []
+    current_chunk = ""
+    
+    # Split by paragraphs first to preserve structure
+    paragraphs = text.split('\n')
+    
+    for paragraph in paragraphs:
+        # If adding this paragraph would exceed the limit, save current chunk and start new one
+        if current_chunk and len(current_chunk) + len(paragraph) + 1 > max_chunk_size:
+            chunks.append(current_chunk)
+            current_chunk = ""
+        
+        # If a single paragraph is too long, split it by sentences
+        if len(paragraph) > max_chunk_size:
+            if current_chunk:
+                chunks.append(current_chunk)
+                current_chunk = ""
+            
+            # Split long paragraph by sentences
+            sentences = paragraph.split('. ')
+            for i, sentence in enumerate(sentences):
+                # Add period back except for last sentence if it doesn't end with punctuation
+                if i < len(sentences) - 1:
+                    sentence += '.'
+                
+                if len(sentence) > max_chunk_size:
+                    # If sentence is still too long, split by words
+                    words = sentence.split(' ')
+                    for word in words:
+                        if current_chunk and len(current_chunk) + len(word) + 1 > max_chunk_size:
+                            chunks.append(current_chunk)
+                            current_chunk = word
+                        else:
+                            current_chunk += (' ' + word if current_chunk else word)
+                else:
+                    if current_chunk and len(current_chunk) + len(sentence) + 1 > max_chunk_size:
+                        chunks.append(current_chunk)
+                        current_chunk = sentence
+                    else:
+                        current_chunk += ('\n' + sentence if current_chunk else sentence)
+        else:
+            current_chunk += ('\n' + paragraph if current_chunk else paragraph)
+    
+    # Add remaining chunk
+    if current_chunk:
+        chunks.append(current_chunk)
+    
+    return chunks
 
 
 async def action_gpt4(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -158,13 +221,16 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             transcript_content = _format_transcript_for_notion(single_message, audio_metadata, timestamp)
             transcript_page_id = os.getenv("NOTION_TRANSCRIPT_PAGE_ID")
             if transcript_page_id:
-                my_notion.add_block(
-                    parent_id=transcript_page_id,
-                    text=transcript_content,
-                    block_type="paragraph",
-                    date=timestamp
-                )
-                logging.info("✅ Transcript successfully stored in Notion")
+                # Split long transcripts into chunks to avoid Notion's ~2000 character limit
+                transcript_chunks = _chunk_text_for_notion(transcript_content)
+                for chunk in transcript_chunks:
+                    my_notion.add_block(
+                        parent_id=transcript_page_id,
+                        text=chunk,
+                        block_type="paragraph",
+                        prepend_timestamp=False  # Timestamp already included in formatted content
+                    )
+                logging.info(f"✅ Transcript successfully stored in Notion ({len(transcript_chunks)} blocks)")
             else:
                 logging.warning("⚠️ NOTION_TRANSCRIPT_PAGE_ID not configured, skipping transcript storage")
         except Exception as e:
@@ -195,13 +261,16 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
             summary_content = _format_summary_for_notion(response, audio_metadata, timestamp)
             summary_page_id = os.getenv("NOTION_SUMMARY_PAGE_ID")
             if summary_page_id:
-                my_notion.add_block(
-                    parent_id=summary_page_id,
-                    text=summary_content,
-                    block_type="paragraph",
-                    date=timestamp
-                )
-                logging.info("✅ Summary successfully stored in Notion")
+                # Split long summaries into chunks to avoid Notion's ~2000 character limit
+                summary_chunks = _chunk_text_for_notion(summary_content)
+                for chunk in summary_chunks:
+                    my_notion.add_block(
+                        parent_id=summary_page_id,
+                        text=chunk,
+                        block_type="paragraph",
+                        prepend_timestamp=False  # Timestamp already included in formatted content
+                    )
+                logging.info(f"✅ Summary successfully stored in Notion ({len(summary_chunks)} blocks)")
             else:
                 logging.warning("⚠️ NOTION_SUMMARY_PAGE_ID not configured, skipping summary storage")
         except Exception as e:
