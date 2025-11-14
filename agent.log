@@ -2,4 +2,5 @@ Added AGENTS.md instructions and updated .gitignore
 Added acknowledgment message before transcription
 Fixed malformed summary prompt in gpt_whisper_bot
 Added architecture review
+Implemented timestamp storage in Notion logs for notes, transcripts, and summaries
 Pinned dependency versions (including pytz) to stabilize docker bots

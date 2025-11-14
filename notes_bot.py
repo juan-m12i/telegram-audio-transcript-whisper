@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from typing import List
 from dotenv import load_dotenv
 from telegram import Update
@@ -19,8 +20,9 @@ my_notion = NotionAdapter(os.getenv("NOTION_TOKEN"))
 
 async def action_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        timestamp = datetime.now()
         my_notion.add_block(parent_id=os.getenv("NOTION_PAGE_ID"), text=update.message.text,
-                            block_type="bulleted_list_item")
+                            block_type="bulleted_list_item", date=timestamp)
         await update.message.reply_text("Note stored")
     except Exception as e:
         logging.error(f"Error while adding block to Notion: {e}")
