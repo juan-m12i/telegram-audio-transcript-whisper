@@ -5,3 +5,7 @@ Added architecture review
 Implemented timestamp storage in Notion logs for notes, transcripts, and summaries
 Pinned dependency versions (including pytz) to stabilize docker bots
 Fixed PR review issues: removed double timestamps, fixed zero value handling, added chunking for long transcripts/summaries
+Created deploy-vps-deploy.sh script following three-folder pattern for VPS deployment
+Fixed PR review bugs: corrected sentence rejoining to use spaces instead of newlines, added validation to prevent chunks exceeding max_chunk_size limit
+2025-11-14 10:28:07 - Updated timestamp handling to use Argentina timezone (America/Argentina/Buenos_Aires) instead of UTC. Added timezone conversion functions with zoneinfo/pytz fallback support.
+2025-11-14 10:30:43 - Refactored timezone handling to use configurable timezone with sensible default (Argentina/GMT-3). Moved common timezone functions to bot/bot_common.py. Timezone can be overridden via TIMEZONE environment variable.

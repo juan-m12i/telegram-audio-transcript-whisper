@@ -24,6 +24,11 @@ TELEGRAM_BOT_TOKEN=<your_telegram_bot_token>
 OPEN_AI_API_KEY=<your_openai_api_key>
 ALLOWED_CHAT_IDS=<comma_separated_list_of_allowed_chat_ids>
 
+# Timezone Configuration (Optional)
+# Default: "America/Argentina/Buenos_Aires" (GMT-3)
+# Override with any valid timezone name (e.g., "America/New_York", "Europe/London", "Asia/Tokyo")
+TIMEZONE=America/Argentina/Buenos_Aires
+
 # Notion Integration (Optional)
 NOTION_TOKEN=<your_notion_integration_token>
 NOTION_TRANSCRIPT_PAGE_ID=<notion_page_id_for_transcripts>
