@@ -245,6 +245,9 @@ async def process_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         logging.info(f"Audio metadata collected: {audio_metadata}")
 
+        # Ensure audio_files directory exists
+        os.makedirs('audio_files', exist_ok=True)
+
         # Download the audio file
         file = await context.bot.get_file(file_id=audio_file.file_id)
         await file.download_to_drive(local_file_path)

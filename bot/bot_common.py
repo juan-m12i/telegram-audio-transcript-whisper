@@ -8,11 +8,13 @@ try:
     from zoneinfo import ZoneInfo
     USE_ZONEINFO = True
 except ImportError:
-    # Fallback for Python < 3.9
-    try:
-        import pytz
-        USE_ZONEINFO = False
-    except ImportError:
+    USE_ZONEINFO = False
+
+# Always try to import pytz as fallback (needed even when zoneinfo is available but tzdata is missing)
+try:
+    import pytz
+except ImportError:
+    if not USE_ZONEINFO:
         raise ImportError("Either zoneinfo (Python 3.9+) or pytz is required for timezone support")
 
 import asyncio
@@ -57,10 +59,14 @@ def _get_timezone(timezone_name: str = None):
     
     if USE_ZONEINFO:
         # Python 3.9+ with zoneinfo
-        return ZoneInfo(timezone_name)
+        try:
+            return ZoneInfo(timezone_name)
+        except Exception:
+            # Fallback to pytz if zoneinfo fails (e.g., tzdata missing on minimal systems)
+            # This catches ZoneInfoNotFoundError when tzdata database is absent
+            return pytz.timezone(timezone_name)
     else:
         # Fallback to pytz
-        import pytz
         return pytz.timezone(timezone_name)
 
 
@@ -79,7 +85,6 @@ def get_local_datetime(timezone_name: str = None) -> datetime:
         return datetime.now(tz)
     else:
         # pytz requires localize
-        import pytz
         return pytz.UTC.localize(datetime.utcnow()).astimezone(tz)
 
 
