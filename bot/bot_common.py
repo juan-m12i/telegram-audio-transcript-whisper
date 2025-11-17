@@ -40,25 +40,25 @@ class TokenSanitizingFilter(logging.Filter):
     
     def filter(self, record: logging.LogRecord) -> bool:
         """Sanitize log record message by obfuscating bot tokens."""
-        # Get the formatted message (this handles both msg and args)
-        original_msg = record.getMessage()
-        sanitized_msg = self._sanitize_message(original_msg)
-        
-        # Replace the message in the record
-        # If msg is a string, replace it directly
-        if isinstance(record.msg, str):
-            record.msg = sanitized_msg
-        # If msg has format placeholders and args, sanitize the args
-        elif record.args:
-            # Sanitize string arguments
-            sanitized_args = tuple(
-                self._sanitize_message(str(arg)) if isinstance(arg, str) else arg
-                for arg in record.args
-            )
-            record.args = sanitized_args
-        else:
-            # Fallback: replace msg with sanitized version
-            record.msg = sanitized_msg
+        try:
+            # Sanitize the message components before formatting
+            # If msg is a string, sanitize it directly
+            if isinstance(record.msg, str):
+                record.msg = self._sanitize_message(record.msg)
+            # If msg has format placeholders and args, sanitize the args
+            elif record.args:
+                # Sanitize string arguments
+                sanitized_args = tuple(
+                    self._sanitize_message(str(arg)) if isinstance(arg, str) else arg
+                    for arg in record.args
+                )
+                record.args = sanitized_args
+            # If msg is not a string and has no args, try to sanitize msg as string
+            else:
+                record.msg = self._sanitize_message(str(record.msg))
+        except Exception:
+            # If sanitization fails, don't break logging - just pass through
+            pass
         
         return True
     
@@ -84,11 +84,18 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+# Reduce verbosity of third-party libraries
+# Set httpx, httpcore, and telegram loggers to WARNING to avoid spam
+httpx_logger = logging.getLogger("httpx")
+httpcore_logger = logging.getLogger("httpcore")
+telegram_logger = logging.getLogger("telegram")
+httpx_logger.setLevel(logging.WARNING)
+httpcore_logger.setLevel(logging.WARNING)
+telegram_logger.setLevel(logging.WARNING)
+
 # Apply token sanitizing filter to httpx and httpcore loggers
 # This will sanitize tokens in all log messages from these libraries
 token_filter = TokenSanitizingFilter()
-httpx_logger = logging.getLogger("httpx")
-httpcore_logger = logging.getLogger("httpcore")
 httpx_logger.addFilter(token_filter)
 httpcore_logger.addFilter(token_filter)
 # Also add filter to any existing handlers
