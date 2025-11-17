@@ -52,3 +52,10 @@ services:
     container_name: cont-telegram-workout-bot
     image: img-telegram-workout-bot
     env_file: workout_bot.env
+    networks:
+      - default
+      - docker-services-network
+
+networks:
+  docker-services-network:
+    external: true
