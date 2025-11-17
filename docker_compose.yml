@@ -42,3 +42,13 @@ services:
     container_name: cont-telegram-sleep-bot
     image: img-telegram-sleep-bot
     env_file: sleep_bot.env
+
+  workout_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: workout_bot.py
+    container_name: cont-telegram-workout-bot
+    image: img-telegram-workout-bot
+    env_file: workout_bot.env
