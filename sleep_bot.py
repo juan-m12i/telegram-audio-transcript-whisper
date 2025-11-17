@@ -61,6 +61,12 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("telegram").setLevel(logging.WARNING)
 logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
+# Import and apply token sanitizing filter
+from bot.bot_common import TokenSanitizingFilter
+token_filter = TokenSanitizingFilter()
+logging.getLogger("httpx").addFilter(token_filter)
+logging.getLogger("httpcore").addFilter(token_filter)
+
 # Set the backend URL based on argument
 BACKEND_URL = 'http://localhost:8080' if args.local else 'https://sleep-tracker-136994214879.us-central1.run.app'
 backend_type = "LOCAL" if args.local else "REMOTE"
