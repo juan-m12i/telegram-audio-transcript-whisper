@@ -91,7 +91,7 @@ ssh "$SSH_ALIAS" "chmod +x $REMOTE_DEPLOY_DIR/docker_compose_recreate.sh"
 # Step 5: Verify .env files exist (warn if missing)
 # Note: .env files are excluded from rsync to preserve VPS-specific configurations
 log_info "Checking for environment files (preserved from previous deployment)..."
-ENV_FILES=("gpt_whisper_bot.env" "notes_bot.env" "dev_bot.env" "sleep_bot.env")
+ENV_FILES=("gpt_whisper_bot.env" "notes_bot.env" "dev_bot.env" "sleep_bot.env" "workout_bot.env")
 for env_file in "${ENV_FILES[@]}"; do
     if ssh "$SSH_ALIAS" "test -f $REMOTE_DEPLOY_DIR/$env_file"; then
         log_info "✓ Found $env_file (preserved)"
@@ -106,7 +106,7 @@ ssh "$SSH_ALIAS" "cd $REMOTE_DEPLOY_DIR && ./docker_compose_recreate.sh"
 
 # Step 7: Verify containers are running
 log_info "Verifying containers are running..."
-CONTAINERS=("cont-telegram-whisper-bot" "cont-telegram-notes-bot" "cont-telegram-dev-bot" "cont-telegram-sleep-bot")
+CONTAINERS=("cont-telegram-whisper-bot" "cont-telegram-notes-bot" "cont-telegram-dev-bot" "cont-telegram-sleep-bot" "cont-telegram-workout-bot")
 for container in "${CONTAINERS[@]}"; do
     if ssh "$SSH_ALIAS" "docker ps --format '{{.Names}}' | grep -q '^$container$'"; then
         log_info "✓ $container is running"
