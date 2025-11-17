@@ -1,5 +1,6 @@
 import os
 import logging
+import re
 from typing import List, Callable, Coroutine, TypeVar, Any, Dict, Optional
 from datetime import datetime
 
@@ -29,11 +30,79 @@ from bot.bot_types import ReplyAction, Condition
 
 load_dotenv()  # Python module to load environment variables from a .env file
 
+
+class TokenSanitizingFilter(logging.Filter):
+    """Logging filter that sanitizes Telegram bot API tokens in log messages."""
+    
+    # Pattern to match bot tokens in URLs: bot<BOT_ID>:<TOKEN>
+    # Example: bot5863831530:AAGwypCaB7Zux6S7LeepCTWjYqWJOG1vl6Y
+    TOKEN_PATTERN = re.compile(r'bot(\d+):([A-Za-z0-9_-]+)')
+    
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Sanitize log record message by obfuscating bot tokens."""
+        try:
+            # Sanitize the message components before formatting
+            # If msg is a string, sanitize it directly
+            if isinstance(record.msg, str):
+                record.msg = self._sanitize_message(record.msg)
+            # If msg has format placeholders and args, sanitize the args
+            elif record.args:
+                # Sanitize string arguments
+                sanitized_args = tuple(
+                    self._sanitize_message(str(arg)) if isinstance(arg, str) else arg
+                    for arg in record.args
+                )
+                record.args = sanitized_args
+            # If msg is not a string and has no args, try to sanitize msg as string
+            else:
+                record.msg = self._sanitize_message(str(record.msg))
+        except Exception:
+            # If sanitization fails, don't break logging - just pass through
+            pass
+        
+        return True
+    
+    def _sanitize_message(self, message: str) -> str:
+        """Replace bot tokens in message with obfuscated fingerprints."""
+        def replace_token(match):
+            bot_id = match.group(1)
+            token = match.group(2)
+            # Create fingerprint: first 4 chars + .. + last 4 chars
+            fingerprint = f"{token[:4]}..{token[-4:]}"
+            # Use bot_lookup to get bot name if available
+            bot_name = bots_lookup.get(fingerprint, "")
+            if bot_name:
+                return f"bot{bot_id}:{fingerprint} ({bot_name})"
+            return f"bot{bot_id}:{fingerprint}"
+        
+        return self.TOKEN_PATTERN.sub(replace_token, message)
+
+
 # Configure logging (native python library)
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+
+# Reduce verbosity of third-party libraries
+# Set httpx, httpcore, and telegram loggers to WARNING to avoid spam
+httpx_logger = logging.getLogger("httpx")
+httpcore_logger = logging.getLogger("httpcore")
+telegram_logger = logging.getLogger("telegram")
+httpx_logger.setLevel(logging.WARNING)
+httpcore_logger.setLevel(logging.WARNING)
+telegram_logger.setLevel(logging.WARNING)
+
+# Apply token sanitizing filter to httpx and httpcore loggers
+# This will sanitize tokens in all log messages from these libraries
+token_filter = TokenSanitizingFilter()
+httpx_logger.addFilter(token_filter)
+httpcore_logger.addFilter(token_filter)
+# Also add filter to any existing handlers
+for handler in httpx_logger.handlers:
+    handler.addFilter(token_filter)
+for handler in httpcore_logger.handlers:
+    handler.addFilter(token_filter)
 
 allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 chat_ids_report: List[int] = [int(chat_id) for chat_id in os.getenv('STARTUP_CHAT_IDS_REPORT').split(',')]
