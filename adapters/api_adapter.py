@@ -108,3 +108,62 @@ class ApiAdapter(StorageAdapter):
             logging.error(f"Unexpected error saving note to API: {e}")
             raise
 
+    async def save_food_log(
+        self,
+        message_id: str,
+        text: str,
+        chat_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Save or update a food log via HTTP API.
+        
+        The API handles idempotency - if the message_id already exists, it updates;
+        otherwise, it creates a new food log entry.
+        
+        Args:
+            message_id: Telegram message ID
+            text: Food log text content
+            chat_id: Optional chat ID for composite message ID
+            
+        Returns:
+            Dict with status ('created' or 'updated'), log_id, and message_id
+        """
+        formatted_message_id = self._format_message_id(message_id, chat_id)
+        
+        payload = {
+            "message_id": formatted_message_id,
+            "text": text
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json"
+        }
+        
+        endpoint = f"{self.api_url}/food-logs"
+        
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(endpoint, json=payload, headers=headers)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                # Validate response structure
+                if "status" not in result or "log_id" not in result:
+                    raise ValueError(f"Invalid API response format: {result}")
+                
+                return {
+                    "status": result["status"],  # 'created' or 'updated'
+                    "log_id": result["log_id"],
+                    "message_id": formatted_message_id
+                }
+        
+        except httpx.HTTPStatusError as e:
+            logging.error(f"Food log API request failed with status {e.response.status_code}: {e.response.text}")
+            raise Exception(f"Food log API request failed: {e.response.status_code}")
+        except httpx.RequestError as e:
+            logging.error(f"Food log API request error: {e}")
+            raise Exception(f"Food log API request error: {str(e)}")
+        except Exception as e:
+            logging.error(f"Unexpected error saving food log to API: {e}")
+            raise
