@@ -56,6 +56,19 @@ services:
       - default
       - docker-services-network
 
+  food_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BOT_SCRIPT: food_bot.py
+    container_name: cont-telegram-food-bot
+    image: img-telegram-food-bot
+    env_file: food_bot.env
+    networks:
+      - default
+      - docker-services-network
+
 networks:
   docker-services-network:
     external: true
