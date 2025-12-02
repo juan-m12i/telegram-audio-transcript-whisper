@@ -19,11 +19,14 @@ except ImportError:
         raise ImportError("Either zoneinfo (Python 3.9+) or pytz is required for timezone support")
 
 import asyncio
+from collections import deque
+from datetime import datetime, timedelta
 #from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder, ContextTypes, Application
 from telegram import Update, Bot
+from telegram.error import NetworkError, TimedOut
 
 from bot.bot_lookup import bots_lookup
 from bot.bot_types import ReplyAction, Condition
@@ -191,6 +194,104 @@ def build_bot(token: str) -> Application:
 
 Handler = TypeVar("Handler", bound=Any)
 
+
+class NetworkErrorTracker:
+    """Tracks network errors to detect persistent connectivity issues.
+    
+    Logs transient errors at WARNING level, escalates to ERROR if too many
+    errors occur within the time window (indicating a real problem).
+    """
+    
+    def __init__(
+        self,
+        error_threshold: int = 5,
+        time_window_minutes: int = 5,
+        bot_name: str = "Unknown Bot"
+    ):
+        """Initialize the error tracker.
+        
+        Args:
+            error_threshold: Number of errors within time window to trigger ERROR level
+            time_window_minutes: Time window in minutes for counting errors
+            bot_name: Name of the bot for logging context
+        """
+        self.error_threshold = error_threshold
+        self.time_window = timedelta(minutes=time_window_minutes)
+        self.bot_name = bot_name
+        self.recent_errors: deque = deque()
+    
+    def _cleanup_old_errors(self):
+        """Remove errors older than the time window."""
+        now = datetime.now()
+        while self.recent_errors and (now - self.recent_errors[0]) > self.time_window:
+            self.recent_errors.popleft()
+    
+    def record_error(self) -> int:
+        """Record an error and return the count of recent errors."""
+        now = datetime.now()
+        self.recent_errors.append(now)
+        self._cleanup_old_errors()
+        return len(self.recent_errors)
+    
+    def is_persistent(self) -> bool:
+        """Check if errors are persistent (exceed threshold)."""
+        self._cleanup_old_errors()
+        return len(self.recent_errors) >= self.error_threshold
+
+
+def create_error_handler(bot_name: str = "Unknown Bot"):
+    """Create an error handler with its own error tracker.
+    
+    Args:
+        bot_name: Name of the bot for logging context
+    
+    Returns:
+        Async error handler function for telegram bot
+    """
+    tracker = NetworkErrorTracker(
+        error_threshold=5,
+        time_window_minutes=5,
+        bot_name=bot_name
+    )
+    
+    async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle errors from the telegram bot.
+        
+        - Network errors (transient): Log at WARNING level
+        - Network errors (persistent): Escalate to ERROR level
+        - Other errors: Always log at ERROR level
+        """
+        error = context.error
+        
+        # Check if it's a network-related error
+        is_network_error = isinstance(error, (NetworkError, TimedOut))
+        
+        if is_network_error:
+            error_count = tracker.record_error()
+            
+            if tracker.is_persistent():
+                # Too many errors in short time - this is a real problem
+                logging.error(
+                    f"[{tracker.bot_name}] PERSISTENT network issues detected! "
+                    f"{error_count} errors in last {tracker.time_window.total_seconds() / 60:.0f} minutes. "
+                    f"Error: {type(error).__name__}: {error}"
+                )
+            else:
+                # Transient error - log at WARNING (won't trigger CloudWatch ERROR alerts)
+                logging.warning(
+                    f"[{tracker.bot_name}] Transient network error "
+                    f"({error_count}/{tracker.error_threshold} in window): "
+                    f"{type(error).__name__}: {error}"
+                )
+        else:
+            # Non-network error - always log at ERROR level
+            logging.error(
+                f"[{tracker.bot_name}] Exception while handling an update: {error}",
+                exc_info=context.error
+            )
+    
+    return error_handler
+
 async def send_startup_message(token: str, chat_id: int, message: str):
     bot = Bot(token)
     await bot.send_message(chat_id, message)
@@ -208,14 +309,19 @@ def run_telegram_bot(token: str, handlers: List[Handler], scheduled_tasks: Optio
     # The app will be running constantly checking for new events
 
     bot_token_fingerprint = f"{token[:4]}..{token[-4:]}"
-    init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
+    bot_name = bots_lookup.get(bot_token_fingerprint, bot_token_fingerprint)
+    
+    # Add error handler to reduce noise from transient network errors
+    bot.add_error_handler(create_error_handler(bot_name))
+    
+    init_message = f"Running telegram bot {bot_token_fingerprint} - {bot_name} on Machine" \
                    f" {os.environ.get('THIS_MACHINE')}"
     logging.info(init_message)
 
     loop = asyncio.get_event_loop()
     # TODO this should print which bot code is running, not where it's hosted
     for chat_id in chat_ids_report:
-        loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bots_lookup.get(bot_token_fingerprint)} on {os.environ.get('THIS_MACHINE')}"))
+        loop.run_until_complete(send_startup_message(token, chat_id, f"Running {bot_name} on {os.environ.get('THIS_MACHINE')}"))
 
     bot.run_polling()
 
@@ -246,14 +352,19 @@ class TelegramBot:
             self.application.add_handler(handler)
 
         bot_token_fingerprint = f"{self.token[:4]}..{self.token[-4:]}"
-        init_message = f"Running telegram bot {bot_token_fingerprint} - {bots_lookup.get(bot_token_fingerprint)} on Machine" \
+        bot_name = bots_lookup.get(bot_token_fingerprint, bot_token_fingerprint)
+        
+        # Add error handler to reduce noise from transient network errors
+        self.application.add_error_handler(create_error_handler(bot_name))
+        
+        init_message = f"Running telegram bot {bot_token_fingerprint} - {bot_name} on Machine" \
                        f" {os.environ.get('THIS_MACHINE')}"
         logging.info(init_message)
 
         loop = asyncio.get_event_loop()
         for chat_id in chat_ids_report:
             loop.run_until_complete(send_startup_message(self.token, chat_id,
-                                                         f"Running {bots_lookup.get(bot_token_fingerprint)} on "
+                                                         f"Running {bot_name} on "
                                                          f"{os.environ.get('THIS_MACHINE')}"))
 
         self.scheduler.start()

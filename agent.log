@@ -1,3 +1,8 @@
+- Resolved merge conflict in PR #27: Merged origin/main into dev branch. Conflict was in agent.log - resolved by combining all log entries from both branches.
+- Added .mypy_cache/ and .pytest_cache/ to rsync exclusions in deploy-vps.sh (dev-only caches not needed on server).
+- Analyzed CloudWatch ERROR traces from Telegram bots on AWS Lightsail. Identified root cause as unhandled exceptions with no error handlers registered. All 5 bots failed simultaneously, suggesting external API/network issue. Recommended adding error handlers and checking full tracebacks.
+- Root cause confirmed: telegram.error.NetworkError (httpx.ReadError) - transient network interruption during get_updates() polling. Bots auto-recovered via built-in retry logic. No code bug, just network hiccup.
+- Added NetworkErrorTracker and error handler to bot_common.py. Transient network errors (1-4 in 5 min) log at WARNING. Persistent errors (5+ in 5 min) escalate to ERROR. Non-network errors always ERROR.
 Added AGENTS.md instructions and updated .gitignore
 Added acknowledgment message before transcription
 Fixed malformed summary prompt in gpt_whisper_bot
