@@ -277,8 +277,8 @@ def create_error_handler(bot_name: str = "Unknown Bot"):
                     f"Error: {type(error).__name__}: {error}"
                 )
             else:
-                # Transient error - log at WARNING (won't trigger CloudWatch ERROR alerts)
-                logging.warning(
+                # Transient error - log at INFO (expected, auto-recovers, no alert needed)
+                logging.info(
                     f"[{tracker.bot_name}] Transient network error "
                     f"({error_count}/{tracker.error_threshold} in window): "
                     f"{type(error).__name__}: {error}"
