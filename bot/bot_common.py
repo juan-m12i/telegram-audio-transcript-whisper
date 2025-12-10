@@ -107,8 +107,8 @@ for handler in httpx_logger.handlers:
 for handler in httpcore_logger.handlers:
     handler.addFilter(token_filter)
 
-allowed_chat_ids: List[int] = [int(chat_id) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
-chat_ids_report: List[int] = [int(chat_id) for chat_id in os.getenv('STARTUP_CHAT_IDS_REPORT').split(',')]
+allowed_chat_ids: List[int] = [int(chat_id) for chat_id in (os.getenv('ALLOWED_CHAT_IDS') or '').split(',') if chat_id.strip()]
+chat_ids_report: List[int] = [int(chat_id) for chat_id in (os.getenv('STARTUP_CHAT_IDS_REPORT') or '').split(',') if chat_id.strip()]
 
 # Default timezone: Argentina (GMT-3)
 # Can be overridden via TIMEZONE environment variable (e.g., "America/Argentina/Buenos_Aires", "America/New_York", etc.)
