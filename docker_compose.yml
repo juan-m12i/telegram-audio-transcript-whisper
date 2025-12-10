@@ -9,6 +9,7 @@ services:
         BOT_SCRIPT: gpt_whisper_bot.py
     container_name: cont-telegram-whisper-bot
     image: img-telegram-whisper-bot
+    restart: unless-stopped
     env_file: gpt_whisper_bot.env
 
   notes_bot:
@@ -19,6 +20,7 @@ services:
         BOT_SCRIPT: notes_bot.py
     container_name: cont-telegram-notes-bot
     image: img-telegram-notes-bot
+    restart: unless-stopped
     env_file: notes_bot.env
 
 
@@ -30,6 +32,7 @@ services:
         BOT_SCRIPT: dev_bot.py
     container_name: cont-telegram-dev-bot
     image: img-telegram-dev-bot
+    restart: unless-stopped
     env_file: dev_bot.env
 
 
@@ -41,6 +44,7 @@ services:
         BOT_SCRIPT: sleep_bot.py
     container_name: cont-telegram-sleep-bot
     image: img-telegram-sleep-bot
+    restart: unless-stopped
     env_file: sleep_bot.env
 
   workout_bot:
@@ -51,6 +55,7 @@ services:
         BOT_SCRIPT: workout_bot.py
     container_name: cont-telegram-workout-bot
     image: img-telegram-workout-bot
+    restart: unless-stopped
     env_file: workout_bot.env
     networks:
       - default
@@ -64,6 +69,7 @@ services:
         BOT_SCRIPT: food_bot.py
     container_name: cont-telegram-food-bot
     image: img-telegram-food-bot
+    restart: unless-stopped
     env_file: food_bot.env
     networks:
       - default
