@@ -7,3 +7,4 @@ notion==0.0.28
 APScheduler==3.10.4
 httpx>=0.27,<0.29
 pytz==2023.3
+setuptools>=70.0.0

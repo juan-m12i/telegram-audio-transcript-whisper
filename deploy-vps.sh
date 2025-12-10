@@ -46,10 +46,15 @@ log_info "Starting deployment to VPS..."
 
 # Step 1: Stop Docker containers from both repo and deployment folders to prevent conflicts
 log_info "Stopping Docker containers (if running)..."
+# Use docker compose v2 (preferred) or fallback to docker-compose v1
+COMPOSE_CMD="docker compose"
+if ! ssh "$SSH_ALIAS" "command -v docker &> /dev/null && docker compose version &> /dev/null" 2>/dev/null; then
+  COMPOSE_CMD="docker-compose"
+fi
 # Stop containers from deployment folder
-ssh "$SSH_ALIAS" "if [ -d $REMOTE_DEPLOY_DIR ]; then cd $REMOTE_DEPLOY_DIR && docker-compose -f docker_compose.yml down 2>/dev/null || true; fi" 2>/dev/null || true
+ssh "$SSH_ALIAS" "if [ -d $REMOTE_DEPLOY_DIR ]; then cd $REMOTE_DEPLOY_DIR && $COMPOSE_CMD -f docker_compose.yml down 2>/dev/null || true; fi" 2>/dev/null || true
 # Stop containers from repo folder (if they exist) to prevent conflicts
-ssh "$SSH_ALIAS" "if [ -d \$HOME/projects/$PROJECT_NAME ]; then cd \$HOME/projects/$PROJECT_NAME && docker-compose -f docker_compose.yml down 2>/dev/null || true; fi" 2>/dev/null || true
+ssh "$SSH_ALIAS" "if [ -d \$HOME/projects/$PROJECT_NAME ]; then cd \$HOME/projects/$PROJECT_NAME && $COMPOSE_CMD -f docker_compose.yml down 2>/dev/null || true; fi" 2>/dev/null || true
 
 # Step 2: Create deployment directory
 log_info "Creating deployment directory: $REMOTE_DEPLOY_DIR"
@@ -119,6 +124,6 @@ done
 
 log_info "Deployment completed!"
 log_info "Deployment directory: $REMOTE_DEPLOY_DIR"
-log_info "To check container status: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker-compose -f docker_compose.yml ps'"
-log_info "To view logs: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker-compose -f docker_compose.yml logs -f'"
+log_info "To check container status: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker compose -f docker_compose.yml ps'"
+log_info "To view logs: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker compose -f docker_compose.yml logs -f'"
 
