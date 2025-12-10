@@ -124,6 +124,6 @@ done
 
 log_info "Deployment completed!"
 log_info "Deployment directory: $REMOTE_DEPLOY_DIR"
-log_info "To check container status: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker compose -f docker_compose.yml ps'"
-log_info "To view logs: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && docker compose -f docker_compose.yml logs -f'"
+log_info "To check container status: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && $COMPOSE_CMD -f docker_compose.yml ps'"
+log_info "To view logs: ssh $SSH_ALIAS 'cd $REMOTE_DEPLOY_DIR && $COMPOSE_CMD -f docker_compose.yml logs -f'"
 
