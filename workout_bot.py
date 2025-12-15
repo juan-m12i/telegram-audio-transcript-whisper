@@ -35,6 +35,11 @@ async def action_save_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message or not message.text:
             return
         
+        # Handle "ping" messages - respond with "pong" without saving to database
+        if message.text.lower().strip() == "ping":
+            await action_ping(update, context)
+            return
+        
         # Get timestamps
         timestamp = get_local_datetime()
         
@@ -112,6 +117,7 @@ def run_workout_bot():
     start_command = bot_start("Welcome! Send me your workout notes. Edit messages to update them.")
     start_handler = CommandHandler('start', start_command)
     ver_handler = CommandHandler('ver', action_reply_factory("Workout Bot"))
+    ping_handler = CommandHandler('ping', action_ping)
     
     # Handle text messages (both new and edited)
     # Note: MessageHandler handles regular messages, and we check for edited_message in the handler
@@ -137,7 +143,7 @@ def run_workout_bot():
     logging.info("Starting Workout bot")
     run_telegram_bot(
         os.getenv('TELEGRAM_BOT_TOKEN'),
-        [start_handler, ver_handler, message_handler, edited_message_handler]
+        [start_handler, ver_handler, ping_handler, message_handler, edited_message_handler]
     )
 
 
